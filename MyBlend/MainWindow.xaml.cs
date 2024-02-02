@@ -17,12 +17,12 @@ namespace MyBlend
     /// </summary>
     public partial class MainWindow : Window
     {
-        ObjModel fileParser;
         public MainWindow()
         {
             InitializeComponent();
-            fileParser = new ObjModel();
-            fileParser.ParseFile(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
+            var entity = new ObjEntity();
+            var parser = new ObjParser(entity);
+            entity = parser.ParseFile(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
         }
     }
 }

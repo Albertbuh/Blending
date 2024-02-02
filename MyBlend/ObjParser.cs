@@ -8,24 +8,16 @@ using System.IO;
 
 namespace MyBlend
 {
-    public record Apex(Vector3? position, Vector3? texture, Vector3? normal);
 
-    public class ObjModel
+    public class ObjParser
     {
-        public List<Vector3> Positions { get; set; }
-        public List<Vector3> TexturePositions { get; set; }
-        public List<Vector3> Normals { get; set; }
-        public List<List<Apex>> Poligons { get; set; }
-
-        public ObjModel()
+        private readonly ObjEntity entity;
+        public ObjParser(ObjEntity entity)
         {
-            Positions = new List<Vector3>();
-            TexturePositions = new List<Vector3>();
-            Normals = new List<Vector3>();
-            Poligons = new List<List<Apex>>();
+            this.entity = entity;
         }
 
-        public void ParseFile(string filepath)
+        public ObjEntity ParseFile(string filepath)
         {
             using (StreamReader sr = new StreamReader(filepath))
             {
@@ -36,6 +28,7 @@ namespace MyBlend
                     AnalizeLine(line);
                 }
             }
+            return entity;
         }
 
         private void AnalizeLine(string line)
@@ -44,21 +37,21 @@ namespace MyBlend
             switch (args[0])
             {
                 case "f":
-                    Poligons.Add(CreatePoligon(args));
+                    entity.Poligons.Add(ReadPoligon(args));
                     break;
                 case "v":
-                    Positions.Add(CreateCoordinate(args));
+                    entity.Positions.Add(ReadCoordinate(args));
                     break;
                 case "vt":
-                    TexturePositions.Add(CreateTextureCoordinate(args));
+                    entity.TexturePositions.Add(ReadTexture(args));
                     break;
                 case "vn":
-                    Normals.Add(CreateNormal(args));
+                    entity.Normals.Add(ReadNormal(args));
                     break;
             }
         }
 
-        private Vector3 CreateCoordinate(string[] parameters)
+        private Vector3 ReadCoordinate(string[] parameters)
         {
             float.TryParse(parameters[1], out var x);
             float.TryParse(parameters[2], out var y);
@@ -66,7 +59,7 @@ namespace MyBlend
             return new Vector3(x, y, z);
         }
 
-        private Vector3 CreateTextureCoordinate(string[] parameters)
+        private Vector3 ReadTexture(string[] parameters)
         {
             var length = parameters.Length;
             float u = 0, v = 0, w = 0;
@@ -80,7 +73,7 @@ namespace MyBlend
             return new Vector3(u, v, w);
         }
 
-        private Vector3 CreateNormal(string[] parameters)
+        private Vector3 ReadNormal(string[] parameters)
         {
             float.TryParse(parameters[1], out var i);
             float.TryParse(parameters[2], out var j);
@@ -88,15 +81,15 @@ namespace MyBlend
             return new Vector3(i, j, k);
         }
 
-        private List<Apex> CreatePoligon(string[] parameters)
+        private List<Apex> ReadPoligon(string[] parameters)
         {
             var result = new List<Apex>();
             for(int i = 1; i < parameters.Length; i++)
             {
                 var indexes = parameters[i].Split('/');
-                GetVectorFromCollectionByIndex(indexes[0], Positions, out var v);
-                GetVectorFromCollectionByIndex(indexes[1], TexturePositions, out var vt);
-                GetVectorFromCollectionByIndex(indexes[2], Normals, out var vn);
+                GetVectorFromCollectionByIndex(indexes[0], entity.Positions, out var v);
+                GetVectorFromCollectionByIndex(indexes[1], entity.TexturePositions, out var vt);
+                GetVectorFromCollectionByIndex(indexes[2], entity.Normals, out var vn);
                 result.Add(new Apex(v, vt, vn));
             }
             return result;
