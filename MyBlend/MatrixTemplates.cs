@@ -7,15 +7,26 @@ using System.Numerics;
 
 namespace MyBlend
 {
-    public static class Matrix
+    public static class MatrixTemplates
     {
-        public static Matrix4x4 Translation(float x, float y, float z)
+
+        public static Matrix4x4 Identity()
         {
             return new Matrix4x4(
                 1, 0, 0, 0,
                 0, 1, 0, 0,
                 0, 0, 1, 0,
-                x, y, z, 1
+                0, 0, 0, 1
+                );
+        }
+
+        public static Matrix4x4 ByVector(Vector3 v)
+        {
+            return new Matrix4x4(
+                v.X, 0, 0, 0,
+                0, v.Y, 0, 0,
+                0, 0, v.Z, 0,
+                0, 0, 0, 0
                 );
         }
 
@@ -79,16 +90,16 @@ namespace MyBlend
 
         public static Matrix4x4 Projection(float fov, float aspect, float znear, float zfar)
         {
-            fov = (float)(Math.Tan((DegToRad(fov)) / 2));
+            var fovTan = (float)(Math.Tan((DegToRad(fov)) / 2));
             return new Matrix4x4(
-                1 / (aspect * fov), 0,0,0,
-                0, 1 / fov, 0, 0,
+                1 / (aspect * fovTan), 0,0,0,
+                0, 1 / fovTan, 0, 0,
                 0, 0, zfar / (znear - zfar), (znear * zfar) / (znear - zfar),
                 0, 0, -1, 0
                 );
         }
 
-        public static double DegToRad(double angle)
+        private static double DegToRad(double angle)
         {
             return (Math.PI / 180) * angle;
         }

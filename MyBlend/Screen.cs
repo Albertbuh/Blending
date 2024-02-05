@@ -11,6 +11,7 @@ namespace MyBlend
     {
         public int Width {  get; set; }
         public int Height { get; set; }
+        private Matrix4x4 matrix = Matrix4x4.Identity;
         public Screen(int width, int height)
         {
             Width = width;
@@ -19,12 +20,18 @@ namespace MyBlend
 
         public Matrix4x4 GetMatrix(int xmin = 0, int ymin = 0)
         {
-            return new Matrix4x4(
-                Width / 2, 0, 0, xmin + Width/2,
-                0, Height / 2, 0, ymin + Height/2,
-                0, 0, 1, 0,
-                0, 0, 0, 1
-                );
+            if(matrix.IsIdentity || (xmin != 0 || ymin != 0))
+            {
+                matrix = new Matrix4x4(
+                        Width / 2, 0, 0, xmin + Width/2,
+                        0, - Height / 2, 0, ymin + Height/2,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1
+                        );
+            }
+            return matrix;
         }
+
+
     }
 }

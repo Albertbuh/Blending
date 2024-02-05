@@ -12,6 +12,7 @@ namespace MyBlend
         public Vector3 Eye { get; set; }
         public Vector3 Target { get; set; }
         public Vector3 Up { get; set; }
+        private Matrix4x4 matrix = Matrix4x4.Identity;
 
         public Camera(Vector3 eye, Vector3 target, Vector3 up)
         {
@@ -20,28 +21,23 @@ namespace MyBlend
             Up = up;
         }
 
-        private Vector3 Normalize(Vector3 v)
+        public Matrix4x4 GetMatrix()
         {
-            var magnitude = v.X * v.X + v.Y * v.Y + v.Z * v.Z;
-            return new Vector3(v.X / magnitude, v.Y / magnitude, v.Z / magnitude);
-        }
+            if(matrix.IsIdentity)
+            {
+                var zAxis = Vector3.Normalize(Eye - Target);
+                var xAxis = Vector3.Normalize(Vector3.Cross(Up, zAxis));
+                var yAxis = Up;
+                matrix = new Matrix4x4(
+                    xAxis.X, xAxis.Y, xAxis.Z, -Vector3.Dot(xAxis, Eye),
+                    yAxis.X, yAxis.Y, yAxis.Z, -Vector3.Dot(yAxis, Eye),
+                    zAxis.X, zAxis.Y, zAxis.Z, -Vector3.Dot(zAxis, Eye),
+                    0, 0, 0, 1
+                    );
+            }
 
-        private float Dot(Vector3 v1, Vector3 v2)
-        {
-            return v1.X * v2.X + v1.Y * v2.Y + v1.Z * v2.Z; 
-        }
-
-        private Matrix4x4 GetMatrix()
-        {
-            var zAxis = Normalize(Eye - Target);
-            var xAxis = Normalize(Up * zAxis);
-            var yAxis = Up;
-            return new Matrix4x4(
-                xAxis.X, xAxis.Y, xAxis.Z, -Dot(xAxis, Eye),
-                yAxis.X, yAxis.Y, yAxis.Z, -Dot(yAxis, Eye),
-                zAxis.X, zAxis.Y, zAxis.Z, -Dot(zAxis, Eye),
-                0, 0, 0, 1
-                );
+            return matrix;
+            
         }
 
     }
