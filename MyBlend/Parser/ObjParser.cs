@@ -5,28 +5,38 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Numerics;
 using System.IO;
+using MyBlend.Models;
+using MyBlend.Models.Basic;
 
-namespace MyBlend
+namespace MyBlend.Parser
 {
 
-    public class ObjParser
+    public class ObjParser : IParser
     {
-        private readonly ObjEntity entity;
+        private readonly ObjEntity? entity;
+
         public ObjParser(ObjEntity entity)
         {
             this.entity = entity;
         }
 
-        public ObjEntity ParseFile(string filepath)
+        public Entity Parse(string filepath)
         {
-            using (StreamReader sr = new StreamReader(filepath))
+            try
             {
-                string? line;
-                while ((line = sr.ReadLine()) != null)
+                using (StreamReader sr = new StreamReader(filepath))
                 {
-                    line = line.Replace('.', ',');
-                    AnalizeLine(line);
+                    string? line;
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        line = line.Replace('.', ',');
+                        AnalizeLine(line);
+                    }
                 }
+            }
+            catch(Exception e)
+            {
+                throw new ParserException(e.ToString());
             }
             return entity;
         }
@@ -43,7 +53,7 @@ namespace MyBlend
                     entity.Positions.Add(ReadCoordinate(args));
                     break;
                 case "vt":
-                    entity.TexturePositions.Add(ReadTexture(args));
+                    entity.Textures.Add(ReadTexture(args));
                     break;
                 case "vn":
                     entity.Normals.Add(ReadNormal(args));
@@ -51,12 +61,15 @@ namespace MyBlend
             }
         }
 
-        private Vector3 ReadCoordinate(string[] parameters)
+        private Vector4 ReadCoordinate(string[] parameters)
         {
             float.TryParse(parameters[1], out var x);
             float.TryParse(parameters[2], out var y);
             float.TryParse(parameters[3], out var z);
-            return new Vector3(x, y, z);
+            float w = 1f;
+            if (parameters.Length > 4)
+                float.TryParse(parameters[4], out w);
+            return new Vector4(x, y, z, w);
         }
 
         private Vector3 ReadTexture(string[] parameters)
@@ -81,16 +94,20 @@ namespace MyBlend
             return new Vector3(i, j, k);
         }
 
-        private List<Apex> ReadPoligon(string[] parameters)
+        private Face[] ReadPoligon(string[] parameters)
         {
-            var result = new List<Apex>();
-            for(int i = 1; i < parameters.Length; i++)
+            var length = parameters.Length;
+            var result = new Face[length - 1];
+            for(int i = 1; i < length; i++)
             {
-                var indexes = parameters[i].Split('/');
-                GetVectorFromCollectionByIndex(indexes[0], entity.Positions, out var v);
-                GetVectorFromCollectionByIndex(indexes[1], entity.TexturePositions, out var vt);
-                GetVectorFromCollectionByIndex(indexes[2], entity.Normals, out var vn);
-                result.Add(new Apex(v, vt, vn));
+                var strIndexes = parameters[i].Split('/');
+                var indexes = new int[strIndexes.Length];
+                for(int j = 0; j < strIndexes.Length; j++)
+                {
+                    Int32.TryParse(strIndexes[j], out indexes[j]);
+                    indexes[j]--; //because obj file starts indexes from 1
+                }
+                result[i - 1] = new Face(indexes);
             }
             return result;
         }

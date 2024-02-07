@@ -20,23 +20,13 @@ namespace MyBlend
                 );
         }
 
-        public static Matrix4x4 ByVector(Vector3 v)
-        {
-            return new Matrix4x4(
-                v.X, 0, 0, 0,
-                0, v.Y, 0, 0,
-                0, 0, v.Z, 0,
-                0, 0, 0, 0
-                );
-        }
-
         public static Matrix4x4 Movement(Vector3 translation)
         {
             return new Matrix4x4(
-                1,0,0,translation.X,
-                0,1,0,translation.Y,
-                0,0,1,translation.Z,
-                0,0,0,1
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                translation.X, translation.Y, translation.Z, 1
                 );
         }
 
