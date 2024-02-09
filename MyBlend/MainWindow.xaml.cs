@@ -39,7 +39,7 @@ namespace MyBlend
             entity = new ObjEntity();
             parser = new ObjParser((ObjEntity)entity);
             parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
-            //parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\airplane.obj");
+            //parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\Shrek.obj");
 
 
             width = (float)Application.Current.MainWindow.Width;
@@ -127,12 +127,36 @@ namespace MyBlend
             renderer.DrawEntityMesh(WorldModel, entity, width, height);
         }
 
+        private Point prevMousePosition = default;
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-            if(e.LeftButton == MouseButtonState.Pressed)
-            {
+            var currentMousePosition = e.GetPosition(this);
 
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                if (prevMousePosition != default)
+                {
+                    var dx = (float)(currentMousePosition.X - prevMousePosition.X);
+                    var dy = (float)(prevMousePosition.Y - currentMousePosition.Y);
+                    UpdateWorldModel(MatrixTemplates.Movement(dx, dy, 0));
+                    renderer.DrawEntityMesh(WorldModel, entity, width, height);
+                }
             }
+            else if(e.RightButton == MouseButtonState.Pressed)
+            {
+                if (prevMousePosition != default)
+                {
+                    var dy = (float)(currentMousePosition.X - prevMousePosition.X);
+                    if (dy != 0)
+                        UpdateWorldModel(MatrixTemplates.RotateY(dy));
+                    var dx = (float)(currentMousePosition.Y - prevMousePosition.Y);
+                    if (dx != 0)
+                        UpdateWorldModel(MatrixTemplates.RotateX(dx));
+                    renderer.DrawEntityMesh(WorldModel, entity, width, height);
+                }
+            }
+            prevMousePosition = currentMousePosition;
+
         }
 
         public void UpdateWorldModel(Matrix4x4 m)
