@@ -35,30 +35,35 @@ namespace MyBlend.Graphics
 
             var poligons = entity.Poligons;
             var positions = entity.GetPositionsInWorldModel(worldModel);
-            foreach (var poligon in poligons)
+            var bmpInfo = new WritableBitmapInfo(wBitmap.BackBuffer, wBitmap.BackBufferStride, wBitmap.Format.BitsPerPixel);
+            Parallel.ForEach(poligons, (poligon) =>
             {
                 for (int i = 0; i < poligon.Length - 1; i++)
                 {
                     int x1 = (int)(width / 2 + positions[poligon[i].vIndex].X);
+                    x1 = (int)Math.Max(0, Math.Min(x1, width - 1));
                     int y1 = (int)(height / 2 + positions[poligon[i].vIndex].Y);
+                    y1 = (int)Math.Max(0, Math.Min(y1, height - 1));
+
                     for (int j = i + 1; j < poligon.Length; j++)
                     {
                         int x2 = (int)(width / 2 + positions[poligon[j].vIndex].X);
+                        x2 = (int)Math.Max(0, Math.Min(x2, width - 1));
                         int y2 = (int)(height / 2 + positions[poligon[j].vIndex].Y);
-                        if (x1 > 0 && x2 > 0 &&
-                        y1 > 0 && y2 > 0 &&
-                        x1 < width && x2 < width * 0.9 &&
-                           y1 < height && y2 < height * 0.9)
-                            DrawLine(wBitmap, x1, y1, x2, y2);
+                        y2 = (int)Math.Max(0, Math.Min(y2, height - 1));
+
+                        DrawLine(bmpInfo, x1, y1, x2, y2);
                     }
                 }
-            }
+
+            });
 
             wBitmap.AddDirtyRect(new Int32Rect(0, 0, (int)width, (int)height));
             wBitmap.Unlock();
         }
 
-        private void DrawLine(WriteableBitmap bmp, int x1, int y1, int x2, int y2)
+        private record WritableBitmapInfo(nint BackBuffer, int BackBufferStride, int FormatBitsPerPixel);
+        private void DrawLine(WritableBitmapInfo bmp, int x1, int y1, int x2, int y2)
         {
             double dx = x2 - x1;
             double dy = y2 - y1;
@@ -74,9 +79,9 @@ namespace MyBlend.Graphics
                 {
                     var backBuffer = bmp.BackBuffer;
                     int bmpStride = bmp.BackBufferStride;
-                    int pixelSize = bmp.Format.BitsPerPixel / 8;
+                    int pixelSize = bmp.FormatBitsPerPixel / 8;
                     var startOfBuffer = backBuffer;
-                    double row = x1, column = y1;
+                    double row = y1, column = x1;
 
                     for (int i = 0; i < steps; i++)
                     {
@@ -85,8 +90,8 @@ namespace MyBlend.Graphics
 
                         (*(int*)backBuffer) = RenderColor;
 
-                        row += dx;
-                        column += dy;
+                        column += dx;
+                        row += dy;
                         backBuffer = startOfBuffer;
                     }
                 }

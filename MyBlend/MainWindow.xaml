@@ -5,13 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MyBlend"
         mc:Ignorable="d"
-        Title="MainWindow" Height="600" Width="800" KeyDown="Window_KeyDown">
+        Title="MainWindow" Height="600" Width="800" KeyDown="Window_KeyDown" MouseDown="Window_MouseDown" MouseUp="Window_MouseUp" MouseWheel="Window_MouseWheel" MouseMove="Window_MouseMove">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="49*"/>
-            <ColumnDefinition Width="151*"/>
-        </Grid.ColumnDefinitions>
-        <Image Margin="0,0,0,0" x:Name="img" Grid.ColumnSpan="2"/>
-
+        <Image x:Name="img" Grid.ColumnSpan="2"/>
     </Grid>
 </Window>

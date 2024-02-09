@@ -30,6 +30,16 @@ namespace MyBlend
                 );
         }
 
+        public static Matrix4x4 Movement(float x, float y, float z)
+        {
+            return new Matrix4x4(
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                x, y, z, 1
+                );
+        }
+
         public static Matrix4x4 Scale(Vector3 scale)
         {
             return new Matrix4x4(

@@ -20,7 +20,7 @@ namespace MyBlend.Parser
             this.entity = entity;
         }
 
-        public Entity Parse(string filepath)
+        public Entity? Parse(string filepath)
         {
             try
             {
@@ -29,7 +29,7 @@ namespace MyBlend.Parser
                     string? line;
                     while ((line = sr.ReadLine()) != null)
                     {
-                        line = line.Replace('.', ',');
+                        line = line.Replace('.', ',').Replace("   ", " ").Replace("  ", " ").Trim();
                         AnalizeLine(line);
                     }
                 }
@@ -47,16 +47,16 @@ namespace MyBlend.Parser
             switch (args[0])
             {
                 case "f":
-                    entity.Poligons.Add(ReadPoligon(args));
+                    entity!.Poligons.Add(ReadPoligon(args));
                     break;
                 case "v":
-                    entity.Positions.Add(ReadCoordinate(args));
+                    entity!.Positions.Add(ReadCoordinate(args));
                     break;
                 case "vt":
-                    entity.Textures.Add(ReadTexture(args));
+                    entity!.Textures.Add(ReadTexture(args));
                     break;
                 case "vn":
-                    entity.Normals.Add(ReadNormal(args));
+                    entity!.Normals.Add(ReadNormal(args));
                     break;
             }
         }
@@ -105,7 +105,8 @@ namespace MyBlend.Parser
                 for(int j = 0; j < strIndexes.Length; j++)
                 {
                     Int32.TryParse(strIndexes[j], out indexes[j]);
-                    indexes[j]--; //because obj file starts indexes from 1
+                    //because obj file starts indexes from 1
+                    indexes[j]--; 
                 }
                 result[i - 1] = new Face(indexes);
             }
