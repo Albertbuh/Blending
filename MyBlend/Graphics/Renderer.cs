@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
+using System.Windows.Shapes;
 
 namespace MyBlend.Graphics
 {
@@ -30,37 +31,41 @@ namespace MyBlend.Graphics
         {
             var wBitmap = new WriteableBitmap((int)width, (int)height, dpiX, dpiY, PixelFormats.Bgr32, null);
             image.Source = wBitmap;
-
             wBitmap.Lock();
 
             var poligons = entity.Poligons;
             var positions = entity.GetPositionsInWorldModel(worldModel);
             var bmpInfo = new WritableBitmapInfo(wBitmap.BackBuffer, wBitmap.BackBufferStride, wBitmap.Format.BitsPerPixel);
-            Parallel.ForEach(poligons, (poligon) =>
+            
+            void DrawPoligon(Face[] poligon)
             {
-                for (int i = 0; i < poligon.Length - 1; i++)
+                int i = 0;
+                int x1, x2, y1, y2;
+                for (i = 0; i < poligon.Length - 1; i++)
                 {
-                    int x1 = (int)(width / 2 + positions[poligon[i].vIndex].X);
-                    x1 = (int)Math.Max(0, Math.Min(x1, width - 1));
-                    int y1 = (int)(height / 2 + positions[poligon[i].vIndex].Y);
-                    y1 = (int)Math.Max(0, Math.Min(y1, height - 1));
+                    x1 = (int)Math.Max(0, Math.Min(width / 2 + positions[poligon[i].vIndex].X, width - 1));
+                    y1 = (int)Math.Max(0, Math.Min(height / 2 + positions[poligon[i].vIndex].Y, height - 1));
 
-                    for (int j = i + 1; j < poligon.Length; j++)
-                    {
-                        int x2 = (int)(width / 2 + positions[poligon[j].vIndex].X);
-                        x2 = (int)Math.Max(0, Math.Min(x2, width - 1));
-                        int y2 = (int)(height / 2 + positions[poligon[j].vIndex].Y);
-                        y2 = (int)Math.Max(0, Math.Min(y2, height - 1));
+                    x2 = (int)Math.Max(0, Math.Min(width / 2 + positions[poligon[i + 1].vIndex].X, width - 1));
+                    y2 = (int)Math.Max(0, Math.Min(height / 2 + positions[poligon[i + 1].vIndex].Y, height - 1));
 
-                        DrawLine(bmpInfo, x1, y1, x2, y2);
-                    }
+                    DrawLine(bmpInfo, x1, y1, x2, y2);
                 }
 
-            });
+                x1 = (int)Math.Max(0, Math.Min(width / 2 + positions[poligon[i].vIndex].X, width - 1));
+                y1 = (int)Math.Max(0, Math.Min(height / 2 + positions[poligon[i].vIndex].Y, height - 1));
+
+                x2 = (int)Math.Max(0, Math.Min(width / 2 + positions[poligon[0].vIndex].X, width - 1));
+                y2 = (int)Math.Max(0, Math.Min(height / 2 + positions[poligon[0].vIndex].Y, height - 1));
+
+                DrawLine(bmpInfo, x1, y1, x2, y2);
+            }
+            Parallel.ForEach(poligons, (Face[] poligon) => DrawPoligon(poligon));
 
             wBitmap.AddDirtyRect(new Int32Rect(0, 0, (int)width, (int)height));
             wBitmap.Unlock();
         }
+
 
         private record WritableBitmapInfo(nint BackBuffer, int BackBufferStride, int FormatBitsPerPixel);
         private void DrawLine(WritableBitmapInfo bmp, int x1, int y1, int x2, int y2)
