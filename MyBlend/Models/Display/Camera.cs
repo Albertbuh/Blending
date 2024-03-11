@@ -9,45 +9,92 @@ namespace MyBlend.Models.Display
 {
     public class Camera
     {
-        public Vector3 Eye { get; set; }
-        public Vector3 Target { get; set; }
-        public Vector3 Up { get; set; }
-        private Matrix4x4 matrix = Matrix4x4.Identity;
+        private Vector3 eye;
+        public Vector3 Eye
+        {
+            get => eye;
+            set => eye += value;
+        }
 
-        public float FOV { get; set; }
+        private Vector3 target;
+        public Vector3 Target
+        {
+            get => target;
+            private set => target = value;
+        }
+
+
+        public Vector3 Up { get; set; }
+
+        private const float minFov = 5;
+        private const float maxFov = 178;
+        private float fov;
+        public float FOV {
+            get => fov;
+            set => fov = Math.Min(Math.Max(value, minFov), maxFov);
+        }
+
         public float Aspect { get; set; }
         public float zNear { get; set; }
         public float zFar { get; set; }
-        
+
+
+        private float phi;
+        private const float minPhi = (float)Math.PI / 180 * 2;
+        private const float maxPhi = (float)Math.PI / 180 * 178;
+        public float Phi
+        {
+            get => phi;
+            set => phi = value % ((float)Math.PI * 2);
+        }
+        private float zeta;
+        public float Zeta
+        {
+            get => zeta;
+            set => zeta = value % ((float)Math.PI * 2);
+        }
+        private float radius { get; set; }
         public Camera(float fov, float aspect, float znear, float zfar, Vector3 eye, Vector3 target, Vector3 up)
         {
-            Eye = eye;
+            this.eye = eye;
             Target = target;
             Up = up;
-            FOV = fov;
+            this.fov = fov;
             Aspect = aspect;
             zNear = znear;  
             zFar = zfar;
+
+            radius = (float)Math.Sqrt(this.eye.X * eye.X + eye.Z * eye.Z + eye.Y * eye.Y);
+            zeta = (float)Math.Atan2(this.eye.Z, this.eye.X);
+            phi = (float)Math.Acos(this.eye.Y / radius);
         }
 
-        public Matrix4x4 GetMatrix()
+        public Matrix4x4 GetLookAtMatrix() => Matrix4x4.CreateLookAt(UpdateEyePosition(), target, Up);
+        public Matrix4x4 GetPerspectiveMatrix() => Matrix4x4.CreatePerspectiveFieldOfView(fov, Aspect, zNear, zFar);
+        private Vector3 UpdateEyePosition()
         {
-            if (matrix.IsIdentity)
+            if (phi >= maxPhi)
             {
-                var zAxis = Vector3.Normalize(Eye - Target);
-                var xAxis = Vector3.Normalize(Vector3.Cross(Up, zAxis));
-                var yAxis = Vector3.Cross(zAxis, xAxis);
-                matrix = new Matrix4x4(
-                    xAxis.X, xAxis.Y, xAxis.Z, -Vector3.Dot(xAxis, Eye),
-                    yAxis.X, yAxis.Y, yAxis.Z, -Vector3.Dot(yAxis, Eye),
-                    zAxis.X, zAxis.Y, zAxis.Z, -Vector3.Dot(zAxis, Eye),
-                    0, 0, 0, 1
-                    );
+                phi = maxPhi;
+            }
+            else if(phi <= minPhi)
+            {
+                phi = minPhi;
             }
 
-            return matrix;
-
+            eye.X = (float)(radius * Math.Sin(phi) * Math.Cos(zeta));
+            eye.Z = (float)(radius * Math.Sin(phi) * Math.Sin(zeta));
+            eye.Y = (float)(radius * Math.Cos(phi));
+            return eye;
         }
+
+        public void UpdateTarget(Vector3 delta)
+        {
+            target.X += delta.X;
+            target.Y += delta.Y;
+            target.Z += delta.Z;
+        }
+
 
     }
 }

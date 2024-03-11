@@ -24,110 +24,82 @@ namespace MyBlend
     /// </summary>
     public partial class MainWindow : Window
     {
-        private WriteableBitmap wBitmap;
         private IParser parser;
         private Entity entity;
         private Screen screen;
         private Camera camera;
         private Renderer renderer;
         float width, height;
+        float scale = 1f;
+
+        private delegate void RendererMethod(Matrix4x4 m, Entity entity);
+        private RendererMethod renderMethod;
 
         private Matrix4x4 WorldModel = Matrix4x4.Identity;
         public MainWindow()
         {
             InitializeComponent();
+
             entity = new ObjEntity();
             parser = new ObjParser((ObjEntity)entity);
-            parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
-            //parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\Shrek.obj");
+            //parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
+            parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\shrek.obj");
 
 
             width = (float)Application.Current.MainWindow.Width;
             height = (float)Application.Current.MainWindow.Height;
 
-            var eye = new Vector3(0, 0, 10);
+            var eye = new Vector3(0, 0, 35);
             var target = new Vector3(0, 0, 0);
             var up = new Vector3(0, 1, 0);
-            screen = new Screen(width, height);
-            camera = new Camera(120, width/height, 0.1f, 10, eye, target, up);
-
-            var scale = 0.05f;
-
-            WorldModel = MatrixTemplates.Scale(new Vector3(scale, scale, scale)) *
-                         camera.GetMatrix() *
-                         MatrixTemplates.Projection(camera.FOV, camera.Aspect, camera.zNear, camera.zFar) *
-                         screen.GetMatrix();
+            screen = new Screen(img, width, height);
+            camera = new Camera(DegToRad(120), height/width, 0.1f, 10f, eye, target, up);
 
 
 
-            renderer = new Renderer(img);
-            renderer.DrawEntityMesh(WorldModel, entity, screen.Width, screen.Height);
+            renderer = new Renderer(screen);
+            renderMethod = renderer.RasterizeEntity;
+            UpdateWorldModel(Matrix4x4.Identity);
+            renderer.RasterizeEntity(WorldModel, entity);
+
+            KeyDown += RerenderScreen;
+            MouseMove += RerenderScreen;
+            MouseWheel += RerenderScreen;
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             switch(e.Key)
             {
-                case Key.D:
-                    UpdateWorldModel(MatrixTemplates.RotateZ(5));
+                case Key.D1:
+                    renderMethod = renderer.DrawEntityMesh;
                     break;
-                case Key.A:
-                    UpdateWorldModel(MatrixTemplates.RotateZ(-5));
-                    break;
-                case Key.W:
-                    UpdateWorldModel(MatrixTemplates.RotateX(5));
-                    break;
-                case Key.S:
-                    UpdateWorldModel(MatrixTemplates.RotateX(-5));
-                    break;
-                case Key.Q:
-                    UpdateWorldModel(MatrixTemplates.RotateY(5));
-                    break;
-                case Key.E:
-                    UpdateWorldModel(MatrixTemplates.RotateY(-5));
-                    break;
-                case Key.Add or Key.OemPlus:
-                    var scale = 1.1f;
-                    UpdateWorldModel(MatrixTemplates.Scale(new Vector3(scale, scale, scale)));
-                    break;
-                case Key.Subtract or Key.OemMinus:
-                    scale = 0.9f;
-                    UpdateWorldModel(MatrixTemplates.Scale(new Vector3(scale, scale, scale)));
-                    break;
-                case Key.Left:
-                    UpdateWorldModel(MatrixTemplates.Movement(new Vector3(0.3f, 0, 0)));
-                    break;
-                case Key.Right:
-                    UpdateWorldModel(MatrixTemplates.Movement(new Vector3(-0.3f, 0, 0)));
-                    break;
-                case Key.Up:
-                    UpdateWorldModel(MatrixTemplates.Movement(new Vector3(0, 0.3f, 0)));
-                    break;
-                case Key.Down:
-                    UpdateWorldModel(MatrixTemplates.Movement(new Vector3(0, -0.3f, 0)));
+                case Key.D2:
+                    renderMethod = renderer.RasterizeEntity;
                     break;
             }
-
-            renderer.DrawEntityMesh(WorldModel, entity, width, height);
+        }
+        
+        private float DegToRad(float angle)
+        {
+            return (float)(Math.PI / 180 * angle);
         }
 
-        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        private void RerenderScreen(object sender, EventArgs e)
         {
-        }
-
-        private void Window_MouseUp(object sender, MouseButtonEventArgs e)
-        {
+            UpdateWorldModel(Matrix4x4.Identity);
+            renderMethod?.Invoke(WorldModel, entity);
         }
 
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
         {
-            var delta = e.Delta / 1000f;
-            var scale = 1 + delta;
-            UpdateWorldModel(MatrixTemplates.Scale(new Vector3(scale, scale, scale)));
-            renderer.DrawEntityMesh(WorldModel, entity, width, height);
+            float delta = (float)e.Delta / 1000;
+            scale *= (1 + delta);
         }
 
         private Point prevMousePosition = default;
+        private float phi = 0;
+        private float zeta = 0;
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
             var currentMousePosition = e.GetPosition(this);
@@ -136,33 +108,42 @@ namespace MyBlend
             {
                 if (prevMousePosition != default)
                 {
-                    var dx = (float)(currentMousePosition.X - prevMousePosition.X);
-                    var dy = (float)(prevMousePosition.Y - currentMousePosition.Y);
-                    UpdateWorldModel(MatrixTemplates.Movement(dx, dy, 0));
-                    renderer.DrawEntityMesh(WorldModel, entity, width, height);
+                    var dy = (float)(currentMousePosition.Y - prevMousePosition.Y) * scale;
+                    MoveCamera(0, dy);
                 }
             }
             else if(e.RightButton == MouseButtonState.Pressed)
             {
                 if (prevMousePosition != default)
                 {
-                    var dy = (float)(currentMousePosition.X - prevMousePosition.X);
-                    if (dy != 0)
-                        UpdateWorldModel(MatrixTemplates.RotateY(dy));
-                    var dx = (float)(currentMousePosition.Y - prevMousePosition.Y);
-                    if (dx != 0)
-                        UpdateWorldModel(MatrixTemplates.RotateX(dx));
-                    renderer.DrawEntityMesh(WorldModel, entity, width, height);
+                    var dy = (float)(currentMousePosition.Y - prevMousePosition.Y);
+                    var dx = (float)(currentMousePosition.X - prevMousePosition.X);
+                    RotateCamera(dx, dy);
                 }
             }
             prevMousePosition = currentMousePosition;
-
         }
 
-        public void UpdateWorldModel(Matrix4x4 m)
+        private void RotateCamera(float dx, float dy)
         {
-            WorldModel = m * WorldModel;
+            camera.Zeta += (dx * 0.005f);
+            camera.Phi -= (dy * 0.005f);
         }
+
+        private void MoveCamera(float dx, float dy)
+        {
+            camera.UpdateTarget(new Vector3(-dx, dy, 0));
+        }
+
+        public void UpdateWorldModel(Matrix4x4 transform)
+        {
+            WorldModel = Matrix4x4.CreateScale(new Vector3(scale, scale, scale)) *
+                         transform *
+                         camera.GetLookAtMatrix() *
+                         camera.GetPerspectiveMatrix() *
+                         screen.GetMatrix();
+        }
+
         
     }
 }

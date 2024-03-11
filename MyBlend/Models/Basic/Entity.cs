@@ -36,18 +36,28 @@ public class Entity
         var result = new List<Vector4>();
         foreach (var position in Positions)
         {
-            result.Add(MultiplyVectorByMatrix(position, worldModel));
+            result.Add(CountPositionInWorld(position, worldModel));
         }
         return result;
     }
 
-    private Vector4 MultiplyVectorByMatrix(Vector4 v, Matrix4x4 m)
+    public List<Vector3> GetNormalsInWorldModel(Matrix4x4 worldModel)
     {
-        return new Vector4(
-            v.X * m.M11 + v.Y * m.M21 + v.Z * m.M31 + v.W * m.M41,
-            v.X * m.M12 + v.Y * m.M22 + v.Z * m.M32 + v.W * m.M42,
-            v.X * m.M13 + v.Y * m.M23 + v.Z * m.M33 + v.W * m.M43,
-            v.X * m.M14 + v.Y * m.M24 + v.Z * m.M34 + v.W * m.M44
-            );
+        var result = new List<Vector3>();
+        foreach(var normal in Normals)
+        {
+            result.Add(Vector3.Transform(normal, worldModel));
+        }
+        return result;
+    }
+
+
+    private Vector4 CountPositionInWorld(Vector4 v, Matrix4x4 m)
+    {
+        var result = Vector4.Transform(v, m);
+        if (result.W <= 0)
+            return Vector4.Zero;
+        return new Vector4(result.X / result.W, result.Y / result.W, result.Z / result.W, result.W/result.W);
     }
 }
+

@@ -4,34 +4,34 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 
 namespace MyBlend.Models.Display;
 
 public class Screen
 {
-    public float Width {  get; set; }
-    public float Height { get; set; }
-    private Matrix4x4 matrix = Matrix4x4.Identity;
-    public Screen(float width, float height)
+    private float width;
+    private float height;
+    public float Width
     {
-        Width = width;
-        Height = height;
+        get => width;
+        set => width = value;
+    }
+    public float Height
+    {
+        get => height;
+        set => height = value;
     }
 
-    public Matrix4x4 GetMatrix(float xmin = 0, float ymin = 0)
+    public Image Display { get; set; }
+    public Screen(Image image, float width, float height)
     {
-        if(matrix.IsIdentity || (xmin != 0 || ymin != 0))
-        {
-            matrix = new Matrix4x4(
-                    Width / 2, 0, 0, xmin + Width/2,
-                    0, - Height / 2, 0, ymin + Height/2,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1
-                    );
-        }
-        return matrix;
+        this.Display = image;
+        this.width = width;
+        this.height = height;
     }
 
-
+    public Matrix4x4 GetMatrix(float xmin = 0, float ymin = 0) => Matrix4x4.CreateViewport(0, 0, width, height, 0, 10);
+ 
 
 }
