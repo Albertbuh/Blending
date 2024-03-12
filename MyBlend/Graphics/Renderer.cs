@@ -58,8 +58,8 @@ namespace MyBlend.Graphics
             var normals = entity.GetNormalsInWorldModel(worldModel);
 
             zBuffer.Clear();
-            ClearBitmapBuffer();
             wBitmap.Lock();
+            ClearBitmapBuffer();
             var meshLength = poligons.Count;
             var i = 0;
             void DrawTriangleInner(Face[] poligon)
@@ -71,11 +71,11 @@ namespace MyBlend.Graphics
                 int color = ((int)(255 * g) << 16) | ((int)(g * 255) << 8) | ((int)(g * 255));
                 Interlocked.Increment(ref i);
                 var points = new Vector3[poligon.Length];
-                var vertexes = new Vertex[poligon.Length];
+                var vertices = new Vertex[poligon.Length];
                 for (int i = 0; i < poligon.Length; i++)
                 {
                     var pos = positions[poligon[i].vIndex];
-                    vertexes[i] = new Vertex()
+                    vertices[i] = new Vertex()
                     {
                         ScreenPosition = new Vector2(Clamp(pos.X, 0, width - 1), Clamp(pos.Y, 0, height - 1)),
                         WorldPosition = new Vector3(pos.X, pos.Y, pos.Z),
@@ -83,10 +83,12 @@ namespace MyBlend.Graphics
                     };
                 }
                 
-                DrawTriangle(vertexes[0], vertexes[1], vertexes[2], RenderColor);
+                for(int i = 1; i < vertices.Length - 1; i++)
+                {
+                    DrawTriangle(vertices[0], vertices[i], vertices[i + 1], RenderColor);
+                }
             }
             Parallel.ForEach(poligons, (Face[] poligon) => DrawTriangleInner(poligon));
-            
            
             wBitmap.AddDirtyRect(new Int32Rect(0, 0, (int)width, (int)height));
             wBitmap.Unlock();
@@ -222,10 +224,12 @@ namespace MyBlend.Graphics
             var pb = vb.ScreenPosition;
             var pc = vc.ScreenPosition;
             var pd = vd.ScreenPosition;
-            var y = data.Y;
+
             // Thanks to current Y, we can compute the gradient to compute others values like
             // the starting X (sx) and ending X (ex) to draw between
             // if pa.Y == pb.Y or pc.Y == pd.Y, gradient is forced to 1
+            var y = data.Y;
+
             var gradient1 = pa.Y != pb.Y ? (y - pa.Y) / (pb.Y - pa.Y) : 1;
             var gradient2 = pc.Y != pd.Y ? (y - pc.Y) / (pd.Y - pc.Y) : 1;
 
@@ -275,12 +279,9 @@ namespace MyBlend.Graphics
             var p2 = v2.ScreenPosition;
             var p3 = v3.ScreenPosition;
 
-            Vector3 vnFace = (v1.Normal + v2.Normal + v3.Normal) / 3;
-            Vector3 centerPoint = (v1.WorldPosition + v2.WorldPosition + v3.WorldPosition) / 3;
-            Vector3 lightPos = new Vector3(0, 10, -10);
+            Vector3 lightPos = new Vector3(0, -10, -10);
             ScanLineData data = new ScanLineData()
             {
-                NormalDotLight = ComputeNDotL(centerPoint, vnFace, lightPos)
             };
             var l1 = Vector3.Dot(Vector3.Normalize(v1.Normal), Vector3.Normalize(-lightPos));
             var l2 = Vector3.Dot(Vector3.Normalize(v2.Normal), Vector3.Normalize(-lightPos));
