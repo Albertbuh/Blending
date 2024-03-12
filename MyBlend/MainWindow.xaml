@@ -8,5 +8,8 @@
         Title="MainWindow" Height="600" Width="800" KeyDown="Window_KeyDown" MouseWheel="Window_MouseWheel" MouseMove="Window_MouseMove">
     <Grid>
         <Image x:Name="img" Grid.ColumnSpan="2"/>
+        <TextBlock TextWrapping="Wrap" Margin="41,519,661,10">
+            <Run x:Name="fps" FontSize="24" Foreground="White"></Run>
+        </TextBlock>
     </Grid>
 </Window>

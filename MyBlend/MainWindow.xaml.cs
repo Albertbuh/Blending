@@ -16,6 +16,8 @@ using MyBlend.Models.Display;
 using MyBlend.Parser;
 using MyBlend.Graphics;
 using static System.Formats.Asn1.AsnWriter;
+using System.Diagnostics;
+using System.Windows.Threading;
 
 namespace MyBlend
 {
@@ -36,15 +38,17 @@ namespace MyBlend
         private RendererMethod renderMethod;
 
         private Matrix4x4 WorldModel = Matrix4x4.Identity;
+
+        private DispatcherTimer timer;
         public MainWindow()
         {
             InitializeComponent();
 
             entity = new ObjEntity();
             parser = new ObjParser((ObjEntity)entity);
-            parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
+            //parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
             //parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\shrek.obj");
-            //parser.Parse(@"D:\Univer\acg\Shovel Knight\shovel_low.obj");
+            parser.Parse(@"D:\Univer\acg\Shovel Knight\shovel_low.obj");
 
 
             width = (float)Application.Current.MainWindow.Width;
@@ -66,6 +70,12 @@ namespace MyBlend
             KeyDown += RerenderScreen;
             MouseMove += RerenderScreen;
             MouseWheel += RerenderScreen;
+
+            timer = new DispatcherTimer();
+            timer.Interval = TimeSpan.FromSeconds(1);
+            timer.Tick += Timer_Tick;
+
+            timer.Start();
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -86,10 +96,18 @@ namespace MyBlend
             return (float)(Math.PI / 180 * angle);
         }
 
+        private int frameCount = 0;
         private void RerenderScreen(object sender, EventArgs e)
         {
             UpdateWorldModel(Matrix4x4.Identity);
             renderMethod?.Invoke(WorldModel, entity);
+            frameCount++;
+        }
+
+        private void Timer_Tick(object? sender, EventArgs e)
+        {
+            fps.Text = $"{frameCount} fps";
+            frameCount = 0;
         }
 
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
@@ -99,8 +117,6 @@ namespace MyBlend
         }
 
         private Point prevMousePosition = default;
-        private float phi = 0;
-        private float zeta = 0;
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
             var currentMousePosition = e.GetPosition(this);
