@@ -30,7 +30,7 @@ namespace MyBlend
         private Camera camera;
         private Renderer renderer;
         float width, height;
-        float scale = 1f;
+        float scale = 3f;
 
         private delegate void RendererMethod(Matrix4x4 m, Entity entity);
         private RendererMethod renderMethod;
@@ -42,14 +42,15 @@ namespace MyBlend
 
             entity = new ObjEntity();
             parser = new ObjParser((ObjEntity)entity);
-            //parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
-            parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\shrek.obj");
+            parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
+            //parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\shrek.obj");
+            //parser.Parse(@"D:\Univer\acg\Shovel Knight\shovel_low.obj");
 
 
             width = (float)Application.Current.MainWindow.Width;
             height = (float)Application.Current.MainWindow.Height;
 
-            var eye = new Vector3(0, 0, 35);
+            var eye = new Vector3(0, 25, 35);
             var target = new Vector3(0, 0, 0);
             var up = new Vector3(0, 1, 0);
             screen = new Screen(img, width, height);

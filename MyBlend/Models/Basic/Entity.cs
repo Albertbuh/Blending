@@ -46,7 +46,8 @@ public class Entity
         var result = new List<Vector3>();
         foreach(var normal in Normals)
         {
-            result.Add(Vector3.Transform(normal, worldModel));
+            result.Add(normal);
+            //result.Add(Vector3.Transform(normal, worldModel));
         }
         return result;
     }
@@ -57,7 +58,7 @@ public class Entity
         var result = Vector4.Transform(v, m);
         if (result.W <= 0)
             return Vector4.Zero;
-        return new Vector4(result.X / result.W, result.Y / result.W, result.Z / result.W, result.W/result.W);
+        return new Vector4(result.X / result.W, result.Y / result.W, -result.Z / result.W, result.W/result.W);
     }
 }
 
