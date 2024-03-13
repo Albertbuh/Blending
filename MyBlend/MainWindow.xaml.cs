@@ -18,6 +18,7 @@ using MyBlend.Graphics;
 using static System.Formats.Asn1.AsnWriter;
 using System.Diagnostics;
 using System.Windows.Threading;
+using MyBlend.Models.Light;
 
 namespace MyBlend
 {
@@ -40,6 +41,8 @@ namespace MyBlend
         private Matrix4x4 WorldModel = Matrix4x4.Identity;
 
         private DispatcherTimer timer;
+        private List<Shading> phongShaders = new();
+        private List<Shading> flatShaders = new();
         public MainWindow()
         {
             InitializeComponent();
@@ -59,11 +62,19 @@ namespace MyBlend
             var up = new Vector3(0, 1, 0);
             screen = new Screen(img, width, height);
             camera = new Camera(DegToRad(120), height/width, 0.1f, 10f, eye, target, up);
+            screen.Camera = camera;
 
-            renderer = new Renderer(screen);
+            phongShaders.Add(new PhongShading(new Light() { Position = new Vector3(5, -10, -10) }, screen, 255));
+
+            flatShaders.Add(new FlatShading(new Light() { Position = new Vector3(0, -10, -10) }, 255));
+            flatShaders.Add(new FlatShading(new Light() { Position = new Vector3(0, 10, 10) }, 255));
+
+            renderer = new Renderer(screen, phongShaders);
             renderMethod = renderer.RasterizeEntity;
             UpdateWorldModel(Matrix4x4.Identity);
             renderer.RasterizeEntity(WorldModel, entity);
+
+            
 
             KeyDown += RerenderScreen;
             MouseMove += RerenderScreen;
@@ -84,6 +95,15 @@ namespace MyBlend
                     renderMethod = renderer.DrawEntityMesh;
                     break;
                 case Key.D2:
+                    renderer.Shaders = null;
+                    renderMethod = renderer.RasterizeEntity;
+                    break;
+                case Key.D3:
+                    renderer.Shaders = flatShaders;
+                    renderMethod = renderer.RasterizeEntity;
+                    break;
+                case Key.D4:
+                    renderer.Shaders = phongShaders;
                     renderMethod = renderer.RasterizeEntity;
                     break;
             }
@@ -94,7 +114,6 @@ namespace MyBlend
             return (float)(Math.PI / 180 * angle);
         }
 
-        private int frameCount = 0;
         private void RerenderScreen(object sender, EventArgs e)
         {
             UpdateWorldModel(Matrix4x4.Identity);
@@ -122,7 +141,7 @@ namespace MyBlend
                 if (prevMousePosition != default)
                 {
                     var dy = (float)(currentMousePosition.Y - prevMousePosition.Y) * scale;
-                    MoveCamera(0, dy);
+                    MoveCamera(0, dy * 0.2f);
                 }
             }
             else if(e.RightButton == MouseButtonState.Pressed)

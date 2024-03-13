@@ -24,6 +24,7 @@ namespace MyBlend.Parser
         {
             try
             {
+                Clear();
                 using (StreamReader sr = new StreamReader(filepath))
                 {
                     string? line;
@@ -41,6 +42,10 @@ namespace MyBlend.Parser
             return entity;
         }
 
+        private void Clear()
+        {
+            entity?.Clear();
+        }
         private void AnalizeLine(string line)
         {
             var args = line.Split(' ');

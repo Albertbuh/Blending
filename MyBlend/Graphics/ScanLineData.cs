@@ -1,4 +1,5 @@
 ﻿using MyBlend.Models.Basic;
+using MyBlend.Models.Light;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +11,12 @@ namespace MyBlend.Graphics
     public struct ScanLineData
     {
         public int Y;
-        public float NormalDotLight;
         public int Color;
+        public readonly IEnumerable<Shading>? Shaders;
+
+        public ScanLineData(IEnumerable<Shading>? shaders)
+        {
+            Shaders = shaders;
+        }
     }
 }

@@ -5,7 +5,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MyBlend.Models.Basic
+namespace MyBlend.Models.Light
 {
     public struct Light
     {

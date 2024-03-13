@@ -24,6 +24,7 @@ public class Screen
     }
 
     public Image Display { get; set; }
+    public Camera? Camera { get; set; }
     public Screen(Image image, float width, float height)
     {
         this.Display = image;

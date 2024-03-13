@@ -1,5 +1,6 @@
 ﻿using MyBlend.Models.Basic;
 using MyBlend.Models.Display;
+using MyBlend.Models.Light;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -24,11 +25,11 @@ namespace MyBlend.Graphics
         #endregion
         //byte array needed for bitmap clearing
         private readonly byte[] blankImage;
-
         private ZBuffer zBuffer;
 
         private readonly Screen screen;
-        public int RenderColor { get; set; }
+
+        public readonly int RenderColor;
         public int dpiX { get; set; } = 96;
         public int dpiY { get; set; } = 96;
 
@@ -42,9 +43,16 @@ namespace MyBlend.Graphics
 
         private readonly WriteableBitmap wBitmap;
         private readonly WriteableBitmapInfo wBitmapInfo;
+        public IEnumerable<Shading>? Shaders;
+
+        public Renderer(Screen screen, IEnumerable<Shading> shaders)
+            :this(screen)
+        {
+            this.Shaders = shaders;
+        }
+
         public Renderer(Screen screen)
         {
-            RenderColor = (255 << 16) | (255 << 8) | (255);
 
             this.screen = screen;
             wBitmap = new WriteableBitmap((int)screen.Width, (int)screen.Height, dpiX, dpiY, PixelFormats.Bgr32, null);
@@ -52,6 +60,8 @@ namespace MyBlend.Graphics
             screen.Display.Source = wBitmap;
             blankImage = new byte[(int)(screen.Width * screen.Height * wBitmap.Format.BitsPerPixel / 8)];
             zBuffer = new ZBuffer((int)screen.Width, (int)screen.Height);
+
+            RenderColor = this.CreateColor(255, 255, 255);
         }
 
         public void RasterizeEntity(Matrix4x4 worldModel, Entity entity)
@@ -85,7 +95,7 @@ namespace MyBlend.Graphics
                 
                 for(int i = 1; i < vertices.Length - 1; i++)
                 {
-                    DrawTriangle(vertices[0], vertices[i], vertices[i + 1], RenderColor);
+                    DrawTriangle(vertices[0], vertices[i], vertices[i + 1]);
                 }
             }
             Parallel.ForEach(poligons, (Face[] poligon) => DrawTriangleInner(poligon));
@@ -216,10 +226,32 @@ namespace MyBlend.Graphics
         float Cross2D(float x0, float y0, float x1, float y1) => x0 * y1 - x1 * y0;
         float LineSide2D(Vector2 p, Vector2 lineFrom, Vector2 lineTo) => Cross2D(p.X - lineFrom.X, p.Y - lineFrom.Y, lineTo.X - lineFrom.X, lineTo.Y - lineFrom.Y);
         int CreateColor(int r, int g = 0, int b = 0) => (r << 16) | (g << 8) | b;
-        float CalculateNormalDotLight(Vector3 normal, Light light) => Math.Max(0, Vector3.Dot(Vector3.Normalize(normal), Vector3.Normalize(-light.Position)));
-
+        
         void ProcessScanLine(ScanLineData data, Vertex va, Vertex vb, Vertex vc, Vertex vd)
         {
+            int UpdateColor(Vector3 p)
+            {
+                if (data.Shaders == null)
+                    return RenderColor;
+
+                int clr = 0;
+                int color = 0;
+                foreach(var shader in data.Shaders)
+                {
+                    checked
+                    {
+                        if (vc.WorldPosition != va.WorldPosition && vc.WorldPosition != vb.WorldPosition)
+                            clr = shader.GetColorWithShading(va, vb, vc, p);
+                        else
+                            clr = shader.GetColorWithShading(va, vb, vd, p);
+                        color += CreateColor(clr, clr, clr);
+                    }
+                }
+
+                //var flat = new FlatShading(new Light() { Position = new Vector3(0, -10, -10) }, 255).GetColorWithShading(va,vb,vc,Vector3.Zero);
+                return color;
+            }
+
             var pa = va.ScreenPosition;
             var pb = vb.ScreenPosition;
             var pc = vc.ScreenPosition;
@@ -239,97 +271,25 @@ namespace MyBlend.Graphics
             float sz = Interpolate(va.WorldPosition.Z, vb.WorldPosition.Z, gradient1);
             float ez = Interpolate(vc.WorldPosition.Z, vd.WorldPosition.Z, gradient2);
 
-            
-
             for (var x = sx; x < ex; x++)
             {
                 float gradientZ = (x - sx) / (float)(ex - sx);
                 var z = Interpolate(sz, ez, gradientZ);
 
-                var clr = GetColorByPhong(va, vb, vc, vd, new Vector3(x, y, z));
-
-                zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, clr));
+                zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, UpdateColor(new Vector3(x,y,z))));
             }
         }
 
-
-        int AddAmbientColor()
-        {
-            const int ia = 255;
-            const float ka = 0.2f;
-            var clr = (int)(ka * ia);
-            return CreateColor(clr, clr, clr);
-        }
-        int AddDiffuseColor(Vector3 normal, Light light)
-        {
-            const float kd = 0.4f;
-            const int id = 255;
-            var clr = (int)(kd * CalculateNormalDotLight(normal, light) * id);
-            return CreateColor(clr, clr, clr);
-        }
-
-        int GetColorByPhong(Vertex va, Vertex vb, Vertex vc, Vertex vd, Vector3 cur)
-        {
-            var light = new Light()
-            {
-                Position = new Vector3(0, -10, -10)
-            };
-            Vector3 normal;
-            if (vc.WorldPosition != va.WorldPosition && vc.WorldPosition != vb.WorldPosition)
-            {
-                CalculateBarycentricCoordinates(va.WorldPosition, vb.WorldPosition, vc.WorldPosition, cur, out var u, out var v, out var w);
-                normal = u * va.Normal + v * vb.Normal + w * vc.Normal;
-            }
-            else
-            {
-                CalculateBarycentricCoordinates(va.WorldPosition, vb.WorldPosition, vd.WorldPosition, cur, out var u, out var v, out var w);
-                normal = u * va.Normal + v * vb.Normal + w * vd.Normal;
-            }
-            return AddAmbientColor() + AddDiffuseColor(normal, light);
-        }
-
-
-        void CalculateBarycentricCoordinates(Vector3 A, Vector3 B, Vector3 C, Vector3 P, out float u, out float v, out float w)
-        {
-            Vector3 v0 = B - A;
-            Vector3 v1 = C - A;
-            Vector3 v2 = P - A;
-
-            float d00 = Vector3.Dot(v0, v0);
-            float d01 = Vector3.Dot(v0, v1);
-            float d11 = Vector3.Dot(v1, v1);
-            float d20 = Vector3.Dot(v2, v0);
-            float d21 = Vector3.Dot(v2, v1);
-
-            float denom = d00 * d11 - d01 * d01;
-
-            v = (d11 * d20 - d01 * d21) / denom;
-            w = (d00 * d21 - d01 * d20) / denom;
-            u = 1 - v - w;
-        }
-
-
-        //flat light model
-        float CountLightIntension(Vertex v1, Vertex v2, Vertex v3, Light light)
-        {
-            var l1 = CalculateNormalDotLight(v1.Normal, light);
-            var l2 = CalculateNormalDotLight(v2.Normal, light);
-            var l3 = CalculateNormalDotLight(v3.Normal, light);
-
-            return Math.Max(0, (float)(l1 + l2 + l3) / 3);
-        }
-
-        void DrawTriangle(Vertex v1, Vertex v2, Vertex v3, int color)
+        void DrawTriangle(Vertex v1, Vertex v2, Vertex v3)
         {
             if (v1.ScreenPosition.Y > v2.ScreenPosition.Y) (v1, v2) = (v2, v1);
             if (v2.ScreenPosition.Y > v3.ScreenPosition.Y) (v2, v3) = (v3, v2);
             if (v1.ScreenPosition.Y > v2.ScreenPosition.Y) (v1, v2) = (v2, v1);
 
-            ScanLineData data = new ScanLineData();
+            ScanLineData data = new ScanLineData(Shaders);
             var p1 = v1.ScreenPosition;
             var p2 = v2.ScreenPosition;
             var p3 = v3.ScreenPosition;
-            // First case where triangles are like that:
             // P1
             // -
             // -   - P2
@@ -350,7 +310,6 @@ namespace MyBlend.Graphics
                     }
                 }
             }
-            // First case where triangles are like that:
             //       P1
             //        -
             // P2 -   - 
@@ -372,7 +331,5 @@ namespace MyBlend.Graphics
                 }
             }
         }
-
-
     }
 }
