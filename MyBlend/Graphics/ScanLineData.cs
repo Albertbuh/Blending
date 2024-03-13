@@ -11,5 +11,6 @@ namespace MyBlend.Graphics
     {
         public int Y;
         public float NormalDotLight;
+        public int Color;
     }
 }

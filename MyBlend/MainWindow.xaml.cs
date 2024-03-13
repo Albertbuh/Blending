@@ -55,12 +55,10 @@ namespace MyBlend
             height = (float)Application.Current.MainWindow.Height;
 
             var eye = new Vector3(0, 25, 35);
-            var target = new Vector3(0, 0, 0);
+            var target = new Vector3(0,0,0);
             var up = new Vector3(0, 1, 0);
             screen = new Screen(img, width, height);
             camera = new Camera(DegToRad(120), height/width, 0.1f, 10f, eye, target, up);
-
-
 
             renderer = new Renderer(screen);
             renderMethod = renderer.RasterizeEntity;
@@ -101,13 +99,11 @@ namespace MyBlend
         {
             UpdateWorldModel(Matrix4x4.Identity);
             renderMethod?.Invoke(WorldModel, entity);
-            frameCount++;
         }
 
         private void Timer_Tick(object? sender, EventArgs e)
         {
-            fps.Text = $"{frameCount} fps";
-            frameCount = 0;
+            fps.Text = $"{renderer.GetFrameCount()} fps";
         }
 
         private void Window_MouseWheel(object sender, MouseWheelEventArgs e)

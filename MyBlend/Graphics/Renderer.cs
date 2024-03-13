@@ -12,7 +12,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
 
 namespace MyBlend.Graphics
@@ -33,6 +32,14 @@ namespace MyBlend.Graphics
         public int dpiX { get; set; } = 96;
         public int dpiY { get; set; } = 96;
 
+        private int frameCount = 0;
+        public int GetFrameCount()
+        {
+            var result = frameCount;
+            frameCount = 0;
+            return result;
+        }
+
         private readonly WriteableBitmap wBitmap;
         private readonly WriteableBitmapInfo wBitmapInfo;
         public Renderer(Screen screen)
@@ -52,7 +59,6 @@ namespace MyBlend.Graphics
             float width = screen.Width;
             float height = screen.Height;
 
-
             var poligons = entity.Poligons;
             var positions = entity.GetPositionsInWorldModel(worldModel);
             var normals = entity.GetNormalsInWorldModel(worldModel);
@@ -60,17 +66,11 @@ namespace MyBlend.Graphics
             zBuffer.Clear();
             wBitmap.Lock();
             ClearBitmapBuffer();
-            var meshLength = poligons.Count;
-            var i = 0;
             void DrawTriangleInner(Face[] poligon)
             {
                 if (IsPoligonBehindCamera(poligon, positions))
                     return;
-
-                var g = 0.25f + (i % meshLength) * 0.75f / meshLength;
-                int color = ((int)(255 * g) << 16) | ((int)(g * 255) << 8) | ((int)(g * 255));
-                Interlocked.Increment(ref i);
-                var points = new Vector3[poligon.Length];
+                
                 var vertices = new Vertex[poligon.Length];
                 for (int i = 0; i < poligon.Length; i++)
                 {
@@ -92,6 +92,8 @@ namespace MyBlend.Graphics
            
             wBitmap.AddDirtyRect(new Int32Rect(0, 0, (int)width, (int)height));
             wBitmap.Unlock();
+
+            frameCount++;
         }
 
         public void DrawEntityMesh(Matrix4x4 worldModel, Entity entity)
@@ -210,15 +212,13 @@ namespace MyBlend.Graphics
         private record struct WriteableBitmapInfo(nint BackBuffer, int BackBufferStride, int FormatBitsPerPixel);
 
         float Clamp(float value, float min = 0, float max = 1) => Math.Max(min, Math.Min(value, max));
-
         float Interpolate(float min, float max, float gradient) => min + (max - min) * Clamp(gradient);
         float Cross2D(float x0, float y0, float x1, float y1) => x0 * y1 - x1 * y0;
         float LineSide2D(Vector2 p, Vector2 lineFrom, Vector2 lineTo) => Cross2D(p.X - lineFrom.X, p.Y - lineFrom.Y, lineTo.X - lineFrom.X, lineTo.Y - lineFrom.Y);
+        int CreateColor(int r, int g = 0, int b = 0) => (r << 16) | (g << 8) | b;
+        float CalculateNormalDotLight(Vector3 normal, Light light) => Math.Max(0, Vector3.Dot(Vector3.Normalize(normal), Vector3.Normalize(-light.Position)));
 
-        // drawing line between 2 points from left to right
-        // papb -> pcpd
-        // pa, pb, pc, pd must then be sorted before
-        void ProcessScanLine(ScanLineData data, Vertex va, Vertex vb, Vertex vc, Vertex vd, int color)
+        void ProcessScanLine(ScanLineData data, Vertex va, Vertex vb, Vertex vc, Vertex vd)
         {
             var pa = va.ScreenPosition;
             var pb = vb.ScreenPosition;
@@ -239,23 +239,84 @@ namespace MyBlend.Graphics
             float sz = Interpolate(va.WorldPosition.Z, vb.WorldPosition.Z, gradient1);
             float ez = Interpolate(vc.WorldPosition.Z, vd.WorldPosition.Z, gradient2);
 
+            
+
             for (var x = sx; x < ex; x++)
             {
                 float gradientZ = (x - sx) / (float)(ex - sx);
-
                 var z = Interpolate(sz, ez, gradientZ);
-                zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, color));
+
+                var clr = GetColorByPhong(va, vb, vc, vd, new Vector3(x, y, z));
+
+                zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, clr));
             }
         }
 
-        float ComputeNDotL(Vector3 vertex, Vector3 normal, Vector3 lightPosition)
+
+        int AddAmbientColor()
         {
-            var lightDirection = lightPosition - vertex;
+            const int ia = 255;
+            const float ka = 0.2f;
+            var clr = (int)(ka * ia);
+            return CreateColor(clr, clr, clr);
+        }
+        int AddDiffuseColor(Vector3 normal, Light light)
+        {
+            const float kd = 0.4f;
+            const int id = 255;
+            var clr = (int)(kd * CalculateNormalDotLight(normal, light) * id);
+            return CreateColor(clr, clr, clr);
+        }
 
-            Vector3.Normalize(normal);
-            Vector3.Normalize(lightDirection);
+        int GetColorByPhong(Vertex va, Vertex vb, Vertex vc, Vertex vd, Vector3 cur)
+        {
+            var light = new Light()
+            {
+                Position = new Vector3(0, -10, -10)
+            };
+            Vector3 normal;
+            if (vc.WorldPosition != va.WorldPosition && vc.WorldPosition != vb.WorldPosition)
+            {
+                CalculateBarycentricCoordinates(va.WorldPosition, vb.WorldPosition, vc.WorldPosition, cur, out var u, out var v, out var w);
+                normal = u * va.Normal + v * vb.Normal + w * vc.Normal;
+            }
+            else
+            {
+                CalculateBarycentricCoordinates(va.WorldPosition, vb.WorldPosition, vd.WorldPosition, cur, out var u, out var v, out var w);
+                normal = u * va.Normal + v * vb.Normal + w * vd.Normal;
+            }
+            return AddAmbientColor() + AddDiffuseColor(normal, light);
+        }
 
-            return Math.Max(0, Vector3.Dot(normal, lightDirection));
+
+        void CalculateBarycentricCoordinates(Vector3 A, Vector3 B, Vector3 C, Vector3 P, out float u, out float v, out float w)
+        {
+            Vector3 v0 = B - A;
+            Vector3 v1 = C - A;
+            Vector3 v2 = P - A;
+
+            float d00 = Vector3.Dot(v0, v0);
+            float d01 = Vector3.Dot(v0, v1);
+            float d11 = Vector3.Dot(v1, v1);
+            float d20 = Vector3.Dot(v2, v0);
+            float d21 = Vector3.Dot(v2, v1);
+
+            float denom = d00 * d11 - d01 * d01;
+
+            v = (d11 * d20 - d01 * d21) / denom;
+            w = (d00 * d21 - d01 * d20) / denom;
+            u = 1 - v - w;
+        }
+
+
+        //flat light model
+        float CountLightIntension(Vertex v1, Vertex v2, Vertex v3, Light light)
+        {
+            var l1 = CalculateNormalDotLight(v1.Normal, light);
+            var l2 = CalculateNormalDotLight(v2.Normal, light);
+            var l3 = CalculateNormalDotLight(v3.Normal, light);
+
+            return Math.Max(0, (float)(l1 + l2 + l3) / 3);
         }
 
         void DrawTriangle(Vertex v1, Vertex v2, Vertex v3, int color)
@@ -264,32 +325,16 @@ namespace MyBlend.Graphics
             if (v2.ScreenPosition.Y > v3.ScreenPosition.Y) (v2, v3) = (v3, v2);
             if (v1.ScreenPosition.Y > v2.ScreenPosition.Y) (v1, v2) = (v2, v1);
 
-            // First case where triangles are like that:
-            // P1
-            // -
-            // -- 
-            // - -
-            // -  -
-            // -   - P2
-            // -  -
-            // - -
-            // -
-            // P3
+            ScanLineData data = new ScanLineData();
             var p1 = v1.ScreenPosition;
             var p2 = v2.ScreenPosition;
             var p3 = v3.ScreenPosition;
-
-            Vector3 lightPos = new Vector3(0, -10, -10);
-            ScanLineData data = new ScanLineData()
-            {
-            };
-            var l1 = Vector3.Dot(Vector3.Normalize(v1.Normal), Vector3.Normalize(-lightPos));
-            var l2 = Vector3.Dot(Vector3.Normalize(v2.Normal), Vector3.Normalize(-lightPos));
-            var l3 = Vector3.Dot(Vector3.Normalize(v3.Normal), Vector3.Normalize(-lightPos));
-
-            var g = Math.Max(0, (float)(l1 + l2 + l3) / 3);
-            var clr = (int)(255 * g);
-            color = (clr << 16) | (clr << 8) | clr;
+            // First case where triangles are like that:
+            // P1
+            // -
+            // -   - P2
+            // -
+            // P3
             if (LineSide2D(p2, p1, p3) > 0)
             {
                 for (var y = (int)p1.Y; y <= (int)p3.Y; y++)
@@ -297,23 +342,18 @@ namespace MyBlend.Graphics
                     data.Y = y;
                     if (y < p2.Y)
                     {
-                        ProcessScanLine(data, v1, v3, v1, v2, color);
+                        ProcessScanLine(data, v1, v3, v1, v2);
                     }
                     else
                     {
-                        ProcessScanLine(data, v1, v3, v2, v3, color);
+                        ProcessScanLine(data, v1, v3, v2, v3);
                     }
                 }
             }
             // First case where triangles are like that:
             //       P1
             //        -
-            //       -- 
-            //      - -
-            //     -  -
             // P2 -   - 
-            //     -  -
-            //      - -
             //        -
             //       P3
             else
@@ -323,14 +363,16 @@ namespace MyBlend.Graphics
                     data.Y = y;
                     if (y < p2.Y)
                     {
-                        ProcessScanLine(data, v1, v2, v1, v3, color);
+                        ProcessScanLine(data, v1, v2, v1, v3);
                     }
                     else
                     {
-                        ProcessScanLine(data, v2, v3, v1, v3, color);
+                        ProcessScanLine(data, v2, v3, v1, v3);
                     }
                 }
             }
         }
+
+
     }
 }
