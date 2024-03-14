@@ -23,13 +23,14 @@ namespace MyBlend.Graphics
         [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory")]
         public static extern void CopyMemory(IntPtr destination, IntPtr source, uint length);
         #endregion
+
         //byte array needed for bitmap clearing
         private readonly byte[] blankImage;
         private ZBuffer zBuffer;
 
         private readonly Screen screen;
 
-        public readonly int RenderColor;
+        public readonly RgbColor RenderColor = new RgbColor(255, 255, 255);
         public int dpiX { get; set; } = 96;
         public int dpiY { get; set; } = 96;
 
@@ -61,7 +62,6 @@ namespace MyBlend.Graphics
             blankImage = new byte[(int)(screen.Width * screen.Height * wBitmap.Format.BitsPerPixel / 8)];
             zBuffer = new ZBuffer((int)screen.Width, (int)screen.Height);
 
-            RenderColor = this.CreateColor(255, 255, 255);
         }
 
         public void RasterizeEntity(Matrix4x4 worldModel, Entity entity)
@@ -179,7 +179,7 @@ namespace MyBlend.Graphics
                         backBuffer += (int)row * bmpStride;
                         backBuffer += (int)column * pixelSize;
 
-                        (*(int*)backBuffer) = RenderColor;
+                        (*(int*)backBuffer) = RenderColor.Color;
 
                         column += dx;
                         row += dy;
@@ -201,7 +201,7 @@ namespace MyBlend.Graphics
         private void DrawPixel(int column, int row, int color = Int32.MinValue)
         {
             if (color == Int32.MinValue)
-                color = RenderColor;
+                color = RenderColor.Color;
             int pixelSize = wBitmapInfo.FormatBitsPerPixel / 8;
             try
             {
@@ -225,31 +225,29 @@ namespace MyBlend.Graphics
         float Interpolate(float min, float max, float gradient) => min + (max - min) * Clamp(gradient);
         float Cross2D(float x0, float y0, float x1, float y1) => x0 * y1 - x1 * y0;
         float LineSide2D(Vector2 p, Vector2 lineFrom, Vector2 lineTo) => Cross2D(p.X - lineFrom.X, p.Y - lineFrom.Y, lineTo.X - lineFrom.X, lineTo.Y - lineFrom.Y);
-        int CreateColor(int r, int g = 0, int b = 0) => (r << 16) | (g << 8) | b;
         
         void ProcessScanLine(ScanLineData data, Vertex va, Vertex vb, Vertex vc, Vertex vd)
         {
-            int UpdateColor(Vector3 p)
+            float GetColorIntensity(Vector3 p)
             {
                 if (data.Shaders == null)
-                    return RenderColor;
+                    return 1;
+                if (data.Shaders.Count() == 0)
+                    return 1;
 
-                int clr = 0;
-                int color = 0;
+                float intensity = 0;
                 foreach(var shader in data.Shaders)
                 {
                     checked
                     {
                         if (vc.WorldPosition != va.WorldPosition && vc.WorldPosition != vb.WorldPosition)
-                            clr = shader.GetColorWithShading(va, vb, vc, p);
+                            intensity += shader.GetColorIntensity(va, vb, vc, p);
                         else
-                            clr = shader.GetColorWithShading(va, vb, vd, p);
-                        color += CreateColor(clr, clr, clr);
+                            intensity += shader.GetColorIntensity(va, vb, vd, p);
                     }
                 }
 
-                //var flat = new FlatShading(new Light() { Position = new Vector3(0, -10, -10) }, 255).GetColorWithShading(va,vb,vc,Vector3.Zero);
-                return color;
+                return intensity;
             }
 
             var pa = va.ScreenPosition;
@@ -257,9 +255,6 @@ namespace MyBlend.Graphics
             var pc = vc.ScreenPosition;
             var pd = vd.ScreenPosition;
 
-            // Thanks to current Y, we can compute the gradient to compute others values like
-            // the starting X (sx) and ending X (ex) to draw between
-            // if pa.Y == pb.Y or pc.Y == pd.Y, gradient is forced to 1
             var y = data.Y;
 
             var gradient1 = pa.Y != pb.Y ? (y - pa.Y) / (pb.Y - pa.Y) : 1;
@@ -276,7 +271,9 @@ namespace MyBlend.Graphics
                 float gradientZ = (x - sx) / (float)(ex - sx);
                 var z = Interpolate(sz, ez, gradientZ);
 
-                zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, UpdateColor(new Vector3(x,y,z))));
+                var intensity = GetColorIntensity(new Vector3(x, y, z));
+                var clr = data.Color.ByIntensity(intensity);
+                zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, clr));
             }
         }
 
@@ -286,7 +283,10 @@ namespace MyBlend.Graphics
             if (v2.ScreenPosition.Y > v3.ScreenPosition.Y) (v2, v3) = (v3, v2);
             if (v1.ScreenPosition.Y > v2.ScreenPosition.Y) (v1, v2) = (v2, v1);
 
-            ScanLineData data = new ScanLineData(Shaders);
+            ScanLineData data = new ScanLineData(Shaders)
+            {
+                Color = RenderColor
+            };
             var p1 = v1.ScreenPosition;
             var p2 = v2.ScreenPosition;
             var p3 = v3.ScreenPosition;

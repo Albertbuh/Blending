@@ -11,7 +11,7 @@ namespace MyBlend.Graphics
     public struct ScanLineData
     {
         public int Y;
-        public int Color;
+        public RgbColor Color;
         public readonly IEnumerable<Shading>? Shaders;
 
         public ScanLineData(IEnumerable<Shading>? shaders)
