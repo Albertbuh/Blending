@@ -67,7 +67,7 @@ namespace MyBlend
 
             var lights = new List<Light>()
             {
-                new Light(Vector3.Zero, 255),
+                new Light(eye, 255),
                 //new Light(new Vector3(0, 10, 10), 255)
             };
 

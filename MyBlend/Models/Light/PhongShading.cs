@@ -30,13 +30,13 @@ namespace MyBlend.Models.Light
         int AddAmbientColor()
         {
             const int ia = 255;
-            const float ka = 0.01f;
+            const float ka = 0.05f;
             var clr = (int)(ka * ia);
             return clr;
         }
         int AddDiffuseColor(Vector3 normal, Vector3 cur)
         {
-            var dir = light.Position - cur;
+            var dir = Vector3.Normalize(light.Position);
             const float kd = 0.4f;
             const int id = 255;
             var clr = (int)(kd * CalculateNormalDotLight(normal, dir) * id);
@@ -45,16 +45,17 @@ namespace MyBlend.Models.Light
 
         int AddSpecularColor(Vector3 normal, Vector3 cur)
         {
-            var dir = light.Position - cur;
+            normal = Vector3.Normalize(normal);
+            var dir = Vector3.Normalize(light.Position);
             const float ks = 0.4f;
             const int iS = 255;
             const float alpha = 32f;
-            var R = light.Position - 2 * CalculateNormalDotLight(normal, dir) * normal;
-            var rv = CalculateNormalDotLight(screen.Camera!.Eye, R);
+            var R = Vector3.Normalize(dir - 2 * Vector3.Dot(dir, normal) * normal);
+            if (R == Vector3.Zero)
+                R = dir;
+            var rv = Vector3.Dot(Vector3.Normalize(screen.Camera!.Eye), R);
             var clr = (int)(ks * Math.Pow(rv, alpha) * iS);
-            if (clr < 0 || clr > 255)
-                return 0;
-            return clr;
+            return Math.Max(0, clr);
         }
 
         int GetColorByPhong(Vertex va, Vertex vb, Vertex vc, Vector3 cur)

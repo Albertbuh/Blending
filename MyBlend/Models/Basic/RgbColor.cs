@@ -29,5 +29,10 @@ namespace MyBlend.Models.Basic
         {
             return (A << 24) | ((int)(R * k) << 16) | ((int)(G * k) << 8) | (int)(B * k);
         }
+
+        public void UpdateColor(int color)
+        {
+            this.color |= color;
+        }
     }
 }

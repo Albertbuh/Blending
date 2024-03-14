@@ -23,7 +23,7 @@ namespace MyBlend.Models.Light
 
         float CountLightIntension(Vertex v1, Vertex v2, Vertex v3, Vector3 p)
         {
-            var dir = - (p - light.Position);
+            var dir = (light.Position);
             var l1 = CalculateNormalDotLight(v1.Normal, dir);
             var l2 = CalculateNormalDotLight(v2.Normal, dir);
             var l3 = CalculateNormalDotLight(v3.Normal, dir);
