@@ -12,11 +12,11 @@ namespace MyBlend.Graphics
     {
         public int Y;
         public RgbColor Color;
-        public readonly IEnumerable<Shading>? Shaders;
+        public readonly IEnumerable<Light>? Lights;
 
-        public ScanLineData(IEnumerable<Shading>? shaders)
+        public ScanLineData(IEnumerable<Light>? lights)
         {
-            Shaders = shaders;
+            Lights = lights;
         }
     }
 }

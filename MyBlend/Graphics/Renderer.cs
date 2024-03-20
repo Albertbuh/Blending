@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
@@ -44,13 +45,23 @@ namespace MyBlend.Graphics
 
         private readonly WriteableBitmap wBitmap;
         private readonly WriteableBitmapInfo wBitmapInfo;
-        public IEnumerable<Shading>? Shaders;
 
-        public Renderer(Screen screen, IEnumerable<Shading> shaders)
-            :this(screen)
+        private Shading? shader;
+        public IEnumerable<Light>? Lights;
+
+        private bool withTexture = false;
+        private Entity currentEntity;
+        public Renderer(Screen screen, Shading shader)
+            : this(screen)
         {
-            this.Shaders = shaders;
+            this.shader = shader;
         }
+        public Renderer(Screen screen, IEnumerable<Light> lights)
+            : this(screen)
+        {
+            this.Lights = lights;
+        }
+
 
         public Renderer(Screen screen)
         {
@@ -58,9 +69,61 @@ namespace MyBlend.Graphics
             this.screen = screen;
             wBitmap = new WriteableBitmap((int)screen.Width, (int)screen.Height, dpiX, dpiY, PixelFormats.Bgr32, null);
             wBitmapInfo = new WriteableBitmapInfo(wBitmap.BackBuffer, wBitmap.BackBufferStride, wBitmap.Format.BitsPerPixel);
+            RenderOptions.SetBitmapScalingMode(screen.Display, BitmapScalingMode.HighQuality);
             screen.Display.Source = wBitmap;
             blankImage = new byte[(int)(screen.Width * screen.Height * wBitmap.Format.BitsPerPixel / 8)];
+            //Array.Fill<byte>(blankImage, 55);
             zBuffer = new ZBuffer((int)screen.Width, (int)screen.Height);
+        }
+
+        public void RasterizeEntityWithTexture(Matrix4x4 worldModel, Entity entity)
+        {
+            if (entity is ObjEntity objEntity)
+            {
+                currentEntity = objEntity;
+                withTexture = true;
+                float width = screen.Width;
+                float height = screen.Height;
+
+                var poligons = entity.Faces;
+                var positions = entity.GetPositionsInWorldModel(worldModel);
+                var normals = entity.GetNormalsInWorldModel(worldModel);
+                var textures = entity.TexturePositions;
+
+                zBuffer.Clear();
+                wBitmap.Lock();
+                ClearBitmapBuffer();
+                void DrawTriangleInner(Face[] poligon)
+                {
+                    if (IsPoligonBehindCamera(poligon, positions))
+                        return;
+
+                    var vertices = new Vertex[poligon.Length];
+                    for (int i = 0; i < poligon.Length; i++)
+                    {
+                        var pos = positions[poligon[i].vIndex];
+                        vertices[i] = new Vertex()
+                        {
+                            ScreenPosition = new Vector2(Clamp(pos.X, 0, width - 1), Clamp(pos.Y, 0, height - 1)),
+                            WorldPosition = new Vector3(pos.X, pos.Y, pos.Z),
+                            Normal = normals[poligon[i].nIndex],
+                            TexturePosition = textures[poligon[i].tIndex]
+                        };
+                    }
+
+                    for (int i = 1; i < vertices.Length - 1; i++)
+                    {
+                        DrawTriangle(vertices[0], vertices[i], vertices[i + 1]);
+                    }
+                }
+                Parallel.ForEach(poligons, (Face[] poligon) => DrawTriangleInner(poligon));
+
+                wBitmap.AddDirtyRect(new Int32Rect(0, 0, (int)width, (int)height));
+                wBitmap.Unlock();
+                withTexture = false;
+
+                frameCount++;
+            }
 
         }
 
@@ -69,7 +132,7 @@ namespace MyBlend.Graphics
             float width = screen.Width;
             float height = screen.Height;
 
-            var poligons = entity.Poligons;
+            var poligons = entity.Faces;
             var positions = entity.GetPositionsInWorldModel(worldModel);
             var normals = entity.GetNormalsInWorldModel(worldModel);
 
@@ -80,7 +143,7 @@ namespace MyBlend.Graphics
             {
                 if (IsPoligonBehindCamera(poligon, positions))
                     return;
-                
+
                 var vertices = new Vertex[poligon.Length];
                 for (int i = 0; i < poligon.Length; i++)
                 {
@@ -92,14 +155,14 @@ namespace MyBlend.Graphics
                         Normal = normals[poligon[i].nIndex]
                     };
                 }
-                
-                for(int i = 1; i < vertices.Length - 1; i++)
+
+                for (int i = 1; i < vertices.Length - 1; i++)
                 {
                     DrawTriangle(vertices[0], vertices[i], vertices[i + 1]);
                 }
             }
             Parallel.ForEach(poligons, (Face[] poligon) => DrawTriangleInner(poligon));
-           
+
             wBitmap.AddDirtyRect(new Int32Rect(0, 0, (int)width, (int)height));
             wBitmap.Unlock();
 
@@ -111,7 +174,7 @@ namespace MyBlend.Graphics
             float width = screen.Width;
             float height = screen.Height;
 
-            var poligons = entity.Poligons;
+            var poligons = entity.Faces;
             var positions = entity.GetPositionsInWorldModel(worldModel);
 
             ClearBitmapBuffer();
@@ -221,33 +284,53 @@ namespace MyBlend.Graphics
 
         private record struct WriteableBitmapInfo(nint BackBuffer, int BackBufferStride, int FormatBitsPerPixel);
 
+        public void UpdateShader(Shading? shader) => this.shader = shader;
         float Clamp(float value, float min = 0, float max = 1) => Math.Max(min, Math.Min(value, max));
         float Interpolate(float min, float max, float gradient) => min + (max - min) * Clamp(gradient);
         float Cross2D(float x0, float y0, float x1, float y1) => x0 * y1 - x1 * y0;
         float LineSide2D(Vector2 p, Vector2 lineFrom, Vector2 lineTo) => Cross2D(p.X - lineFrom.X, p.Y - lineFrom.Y, lineTo.X - lineFrom.X, lineTo.Y - lineFrom.Y);
-        
+
         void ProcessScanLine(ScanLineData data, Vertex va, Vertex vb, Vertex vc, Vertex vd)
         {
-            float GetColorIntensity(Vector3 p)
+            float GetColorIntensity(Vector3 light, Vector3 p)
             {
-                if (data.Shaders == null)
-                    return 1;
-                if (data.Shaders.Count() == 0)
+                if (shader == null)
                     return 1;
 
-                float intensity = 0;
-                foreach(var shader in data.Shaders)
+                if (vc.WorldPosition != va.WorldPosition && vc.WorldPosition != vb.WorldPosition)
+                    return shader.GetColorIntensity(light, va, vb, vc, p);
+                else
+                    return shader.GetColorIntensity(light, va, vb, vd, p);
+            }
+
+            int GetColor(Vector3 p, float u = 0, float v = 0)
+            {
+                var clr = RgbColor.Black;
+                if (Lights != null && Lights.Count() > 0)
                 {
-                    checked
+                    foreach (var light in Lights)
                     {
-                        if (vc.WorldPosition != va.WorldPosition && vc.WorldPosition != vb.WorldPosition)
-                            intensity += shader.GetColorIntensity(va, vb, vc, p);
-                        else
-                            intensity += shader.GetColorIntensity(va, vb, vd, p);
+                        var lclr = light.Color;
+                        if (withTexture && currentEntity is ObjEntity entity)
+                        {
+                            if (entity.Textures.ContainsKey("map_Kd"))
+                            {
+                                lclr = entity.Textures["map_Kd"].Map(u, 1 - v);
+                            }
+                            if (entity.Textures.ContainsKey("norm"))
+                            {
+                                var nclr = entity.Textures["norm"].Map(u, 1 - v);
+                                var normal = new Vector3(nclr.R / (float)255, nclr.G / (float)255, nclr.B / (float)255);
+                                normal = 2 * normal - Vector3.One;
+                                va.Normal = vb.Normal = vc.Normal = vd.Normal = Vector3.Normalize(normal);
+                            }
+                        }
+
+                        var intensity = GetColorIntensity(light.Position, p);
+                        clr.UpdateColor(lclr.ByIntensity(intensity));
                     }
                 }
-
-                return intensity;
+                return clr.Color;
             }
 
             var pa = va.ScreenPosition;
@@ -266,14 +349,35 @@ namespace MyBlend.Graphics
             float sz = Interpolate(va.WorldPosition.Z, vb.WorldPosition.Z, gradient1);
             float ez = Interpolate(vc.WorldPosition.Z, vd.WorldPosition.Z, gradient2);
 
-            for (var x = sx; x < ex; x++)
+            if (withTexture)
             {
-                float gradientZ = (x - sx) / (float)(ex - sx);
-                var z = Interpolate(sz, ez, gradientZ);
+                var su = Interpolate(va.TexturePosition!.Value.X, vb.TexturePosition!.Value.X, gradient1);
+                var eu = Interpolate(vc.TexturePosition!.Value.X, vd.TexturePosition!.Value.X, gradient2);
+                var sv = Interpolate(va.TexturePosition!.Value.Y, vb.TexturePosition!.Value.Y, gradient1);
+                var ev = Interpolate(vc.TexturePosition!.Value.Y, vd.TexturePosition!.Value.Y, gradient2);
 
-                var intensity = GetColorIntensity(new Vector3(x, y, z));
-                var clr = data.Color.ByIntensity(intensity);
-                zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, clr));
+                for (var x = sx; x < ex; x++)
+                {
+                    float gradientZ = (x - sx) / (float)(ex - sx);
+                    var z = Interpolate(sz, ez, gradientZ);
+                    var u = Interpolate(su, eu, gradientZ);
+                    var v = Interpolate(sv, ev, gradientZ);
+
+
+                    var clr = GetColor(new Vector3(x, y, z), u, v);
+                    zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, clr));
+                }
+            }
+            else
+            {
+                for (var x = sx; x < ex; x++)
+                {
+                    float gradientZ = (x - sx) / (float)(ex - sx);
+                    var z = Interpolate(sz, ez, gradientZ);
+
+                    var clr = GetColor(new Vector3(x, y, z));
+                    zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, clr));
+                }
             }
         }
 
@@ -283,7 +387,7 @@ namespace MyBlend.Graphics
             if (v2.ScreenPosition.Y > v3.ScreenPosition.Y) (v2, v3) = (v3, v2);
             if (v1.ScreenPosition.Y > v2.ScreenPosition.Y) (v1, v2) = (v2, v1);
 
-            ScanLineData data = new ScanLineData(Shaders)
+            ScanLineData data = new ScanLineData(Lights)
             {
                 Color = RenderColor
             };

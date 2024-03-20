@@ -11,58 +11,52 @@ namespace MyBlend.Models.Light
 {
     public class PhongShading : Shading
     {
-        private Light light;
         private Screen screen;
 
-        public PhongShading(Light light, Screen screen)
+        public PhongShading(Screen screen)
         {
-            this.light = light;
             this.screen = screen;
         }
 
-        public override float GetColorIntensity(Vertex va, Vertex vb, Vertex vc, Vector3 p)
+        public override float GetColorIntensity(Vector3 light, Vertex va, Vertex vb, Vertex vc, Vector3 p)
         {
-            var phong = GetColorByPhong(va, vb, vc, p);
+            var phong = GetColorByPhong(light, va, vb, vc, p);
             return (float)phong / 255;
-            
         }
 
         int AddAmbientColor()
         {
             const int ia = 255;
-            const float ka = 0.05f;
+            const float ka = 0.035f;
             var clr = (int)(ka * ia);
             return clr;
         }
-        int AddDiffuseColor(Vector3 normal, Vector3 cur)
+        int AddDiffuseColor(Vector3 light, Vector3 normal, Vector3 cur)
         {
-            var dir = Vector3.Normalize(light.Position);
-            const float kd = 0.4f;
+            const float kd = 0.3f;
             const int id = 255;
-            var clr = (int)(kd * CalculateNormalDotLight(normal, dir) * id);
+            var clr = (int)(kd * CalculateNormalDotLight(normal, light) * id);
             return clr;
         }
 
-        int AddSpecularColor(Vector3 normal, Vector3 cur)
+        int AddSpecularColor(Vector3 light, Vector3 normal, Vector3 cur)
         {
             normal = Vector3.Normalize(normal);
-            var dir = Vector3.Normalize(light.Position);
+            var dir = Vector3.Normalize(light);
             const float ks = 0.4f;
             const int iS = 255;
             const float alpha = 32f;
             var R = Vector3.Normalize(dir - 2 * Vector3.Dot(dir, normal) * normal);
-            if (R == Vector3.Zero)
-                R = dir;
             var rv = Vector3.Dot(Vector3.Normalize(screen.Camera!.Eye), R);
             var clr = (int)(ks * Math.Pow(rv, alpha) * iS);
             return Math.Max(0, clr);
         }
 
-        int GetColorByPhong(Vertex va, Vertex vb, Vertex vc, Vector3 cur)
+        int GetColorByPhong(Vector3 light, Vertex va, Vertex vb, Vertex vc, Vector3 cur)
         {
             FindBarycentricCoordinates(va.WorldPosition, vb.WorldPosition, vc.WorldPosition, cur, out var u, out var v, out var w);
             var normal = u * va.Normal + v * vb.Normal + w * vc.Normal;
-            return AddAmbientColor() + AddDiffuseColor(normal, cur) + AddSpecularColor(normal, cur);
+            return AddAmbientColor() + AddDiffuseColor(light, normal, cur) + AddSpecularColor(light, normal, cur);
         }
 
         //void CalculateBarycentricCoordinates(Vector3 A, Vector3 B, Vector3 C, Vector3 P, out float v1, out float v2, out float v3)

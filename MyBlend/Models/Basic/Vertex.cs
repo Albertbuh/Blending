@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Numerics;
 
 namespace MyBlend.Models.Basic
 {
@@ -12,5 +7,6 @@ namespace MyBlend.Models.Basic
         public Vector3 Normal;
         public Vector3 WorldPosition;
         public Vector2 ScreenPosition;
+        public Vector2? TexturePosition;
     }
 }

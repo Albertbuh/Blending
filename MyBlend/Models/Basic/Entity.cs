@@ -10,25 +10,25 @@ namespace MyBlend.Models.Basic;
 public class Entity
 {
     public List<Vector4> Positions { get; set; }
-    public List<Vector3> Textures { get; set; }
-    public List<Vector3> Normals { get; set; }
-    public List<Face[]> Poligons { get; set; }
+    public List<Vector2> TexturePositions { get; set; }
+    public List<Vector3> NormalPositions { get; set; }
+    public List<Face[]> Faces { get; set; }
 
     public Entity() { }
-    public Entity(List<Vector4> positions, List<Vector3> textures, List<Vector3> normals, List<Face[]> poligons)
+    public Entity(List<Vector4> positions, List<Vector2> textures, List<Vector3> normals, List<Face[]> faces)
     {
         Positions = positions;
-        Textures = textures;
-        Normals = normals;
-        Poligons = poligons;
+        TexturePositions = textures;
+        NormalPositions = normals;
+        Faces = faces;
     }
 
-    public void Clear()
+    public virtual void Clear()
     {
         Positions.Clear();
-        Textures.Clear();
-        Normals.Clear();
-        Poligons.Clear();
+        TexturePositions.Clear();
+        NormalPositions.Clear();
+        Faces.Clear();
     }
 
     public List<Vector4> GetPositionsInWorldModel(Matrix4x4 worldModel)
@@ -44,10 +44,9 @@ public class Entity
     public List<Vector3> GetNormalsInWorldModel(Matrix4x4 worldModel)
     {
         var result = new List<Vector3>();
-        foreach(var normal in Normals)
+        foreach(var normal in NormalPositions)
         {
             result.Add(normal);
-            //result.Add(Vector3.Transform(normal, worldModel));
         }
         return result;
     }

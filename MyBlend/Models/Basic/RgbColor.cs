@@ -9,7 +9,10 @@ namespace MyBlend.Models.Basic
 {
     public struct RgbColor
     {
-        public const byte FullIntensity = byte.MaxValue; 
+        public const byte FullIntensity = byte.MaxValue;
+        public static readonly RgbColor White = new(255,255,255);
+        public static readonly RgbColor Black = new(0, 0, 0);
+
         public readonly byte R;
         public readonly byte G;
         public readonly byte B;
@@ -34,5 +37,6 @@ namespace MyBlend.Models.Basic
         {
             this.color |= color;
         }
+
     }
 }

@@ -10,24 +10,21 @@ namespace MyBlend.Models.Light
 {
     public class FlatShading : Shading
     {
-        private Light light;
-        public FlatShading(Light light)
+        public FlatShading()
         {
-            this.light = light;
         }
 
-        public override float GetColorIntensity(Vertex va, Vertex vb, Vertex vc, Vector3 p)
+        public override float GetColorIntensity(Vector3 light, Vertex va, Vertex vb, Vertex vc, Vector3 p)
         {
-            return CountLightIntension(va, vb, vc, p);
+            return CountLightIntension(light, va, vb, vc, p);
         }
 
-        float CountLightIntension(Vertex v1, Vertex v2, Vertex v3, Vector3 p)
+        float CountLightIntension(Vector3 light, Vertex v1, Vertex v2, Vertex v3, Vector3 p)
         {
-            var dir = (light.Position);
-            var l1 = CalculateNormalDotLight(v1.Normal, dir);
-            var l2 = CalculateNormalDotLight(v2.Normal, dir);
-            var l3 = CalculateNormalDotLight(v3.Normal, dir);
-            return Math.Max(0, (float)(l1 + l2 + l3)/3);
+            var l1 = CalculateNormalDotLight(v1.Normal, light);
+            var l2 = CalculateNormalDotLight(v2.Normal, light);
+            var l3 = CalculateNormalDotLight(v3.Normal, light);
+            return Math.Max(0, (float)(l1 + l2 + l3) / 3);
         }
     }
 }

@@ -7,6 +7,8 @@ using System.Numerics;
 using System.IO;
 using MyBlend.Models;
 using MyBlend.Models.Basic;
+using MyBlend.Models.Textures;
+using System.Security.Policy;
 
 namespace MyBlend.Parser
 {
@@ -34,6 +36,7 @@ namespace MyBlend.Parser
                         AnalizeLine(line);
                     }
                 }
+                ReadMtlFile(filepath);
             }
             catch(Exception e)
             {
@@ -41,6 +44,43 @@ namespace MyBlend.Parser
             }
             return entity;
         }
+
+        private string[] mtlComponents = new string[]
+        {
+            "map_Kd", "norm", "map_MRAO"
+        };
+
+        private Texture[]? ReadMtlFile(string filepath)
+        {
+            try
+            {
+                filepath = filepath.Substring(0, filepath.IndexOf(".") + 1) + "mtl";
+                var textureTasks = new List<Task>();
+                using (var sr = new StreamReader(filepath, Encoding.ASCII))
+                {
+                    string? line;
+                    while((line = sr.ReadLine()) != null)
+                    {
+                        var componentName = line.Substring(0, line.IndexOf(" "));
+                        if(mtlComponents.Contains(componentName))
+                        {
+                            var path = filepath.Substring(0, filepath.LastIndexOf(Path.DirectorySeparatorChar) + 1);
+                            path += line.Substring(line.IndexOf(" ") + 1);
+                            textureTasks.Add(Task.Run(() => entity?.Textures.Add(componentName, new Texture(path))));
+                            //entity?.Textures.Add(componentName, new Texture(path));
+                        }
+                    }
+                }
+                Task.WaitAll(textureTasks.ToArray());
+                return entity?.Textures.Values.ToArray();
+
+            }
+            catch(Exception e)
+            {
+                throw new ParserException($"Error occured while read MTL file {e.ToString}", e);
+            }
+        }
+
 
         private void Clear()
         {
@@ -52,16 +92,16 @@ namespace MyBlend.Parser
             switch (args[0])
             {
                 case "f":
-                    entity!.Poligons.Add(ReadPoligon(args));
+                    entity!.Faces.Add(ReadPoligon(args));
                     break;
                 case "v":
                     entity!.Positions.Add(ReadCoordinate(args));
                     break;
                 case "vt":
-                    entity!.Textures.Add(ReadTexture(args));
+                    entity!.TexturePositions.Add(ReadTexturePosition(args));
                     break;
                 case "vn":
-                    entity!.Normals.Add(ReadNormal(args));
+                    entity!.NormalPositions.Add(ReadNormal(args));
                     break;
             }
         }
@@ -77,7 +117,7 @@ namespace MyBlend.Parser
             return new Vector4(x, y, z, w);
         }
 
-        private Vector3 ReadTexture(string[] parameters)
+        private Vector2 ReadTexturePosition(string[] parameters)
         {
             var length = parameters.Length;
             float u = 0, v = 0, w = 0;
@@ -85,10 +125,8 @@ namespace MyBlend.Parser
             float.TryParse(parameters[1], out u);
             if (length == 3)
                 float.TryParse(parameters[2], out v);
-            if (length == 4)
-                float.TryParse(parameters[3], out w);
 
-            return new Vector3(u, v, w);
+            return new Vector2(u, v);
         }
 
         private Vector3 ReadNormal(string[] parameters)
@@ -117,17 +155,7 @@ namespace MyBlend.Parser
             }
             return result;
         }
-
-        private void GetVectorFromCollectionByIndex(string ind, IList<Vector3> collection, out Vector3? vector)
-        {
-            if (int.TryParse(ind, out var vInd))
-            {
-                //obj file starts indexes from 1
-                vector = collection[vInd - 1];
-            }
-            else
-                vector = null;
-        }
+        
     }
 
     

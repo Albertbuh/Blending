@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MyBlend.Graphics
@@ -16,8 +17,8 @@ namespace MyBlend.Graphics
         {
             this.width = width;
             this.height = height;
-            buffer = new float[height,width];
-            lockers = new object[height,width];
+            buffer = new float[height, width];
+            lockers = new object[height, width];
             Clear();
         }
 
@@ -46,7 +47,7 @@ namespace MyBlend.Graphics
                 return;
             buffer[y, x] = value;
             //Interlocked.Exchange(ref buffer[y, x], value);
-        }
+        } 
 
         private bool IsInBuffer(int x, int y)
         {
@@ -63,7 +64,7 @@ namespace MyBlend.Graphics
                 for (int i = 0; i < height; i++)
                     for (int j = 0; j < width; j++)
                         lockers[i, j] = new object();
-            
+
         }
     }
 }

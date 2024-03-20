@@ -33,7 +33,7 @@ namespace MyBlend
         private Camera camera;
         private Renderer renderer;
         float width, height;
-        float scale = 3f;
+        float scale = 2f;
 
         private delegate void RendererMethod(Matrix4x4 m, Entity entity);
         private RendererMethod renderMethod;
@@ -41,8 +41,6 @@ namespace MyBlend
         private Matrix4x4 WorldModel = Matrix4x4.Identity;
 
         private DispatcherTimer timer;
-        private List<Shading> phongShaders = new();
-        private List<Shading> flatShaders = new();
         public MainWindow()
         {
             InitializeComponent();
@@ -50,7 +48,7 @@ namespace MyBlend
             entity = new ObjEntity();
             parser = new ObjParser((ObjEntity)entity);
             //parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
-            //parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\final_v01.obj");
+            //parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\cube.obj");
             parser.Parse(@"D:\Univer\acg\Shovel Knight\shovel_low.obj");
             //parser.Parse(@"D:\Univer\acg\DoomCombatScene.obj");
 
@@ -67,20 +65,16 @@ namespace MyBlend
 
             var lights = new List<Light>()
             {
-                new Light(eye, 255),
+                new Light(eye, new RgbColor(255,0,255)),
                 //new Light(new Vector3(0, 10, 10), 255)
             };
 
-            foreach(var light in lights)
-            {
-                phongShaders.Add(new PhongShading(light, screen));
-                flatShaders.Add(new FlatShading(light));
-            }
+            renderer = new Renderer(screen, lights);
+            renderer.UpdateShader(new PhongShading(screen));
+            renderMethod = renderer.RasterizeEntityWithTexture;
 
-            renderer = new Renderer(screen, phongShaders);
-            renderMethod = renderer.RasterizeEntity;
             UpdateWorldModel(Matrix4x4.Identity);
-            renderer.RasterizeEntity(WorldModel, entity);
+            renderer.RasterizeEntityWithTexture(WorldModel, entity);
 
             KeyDown += RerenderScreen;
             MouseMove += RerenderScreen;
@@ -101,21 +95,25 @@ namespace MyBlend
                     renderMethod = renderer.DrawEntityMesh;
                     break;
                 case Key.D2:
-                    renderer.Shaders = null;
+                    renderer.UpdateShader(null);
                     renderMethod = renderer.RasterizeEntity;
                     break;
                 case Key.D3:
-                    renderer.Shaders = flatShaders;
+                    renderer.UpdateShader(new FlatShading());
                     renderMethod = renderer.RasterizeEntity;
                     break;
                 case Key.D4:
-                    renderer.Shaders = phongShaders;
+                    renderer.UpdateShader(new PhongShading(screen));
                     renderMethod = renderer.RasterizeEntity;
                     break;
+                case Key.D5:
+                    renderer.UpdateShader(new PhongShading(screen));
+                    renderMethod = renderer.RasterizeEntityWithTexture;
+                    break;
                 case Key.N:
-                    var newLight = new Light(camera.Eye, 255);
-                    phongShaders.Add(new PhongShading(newLight, screen));
-                    flatShaders.Add(new FlatShading(newLight));
+                    var list = renderer.Lights.ToList();
+                    list.Add(new Light(camera.Eye, 255));
+                    renderer.Lights = list;
                     break;
 
             }
