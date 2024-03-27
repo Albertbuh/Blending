@@ -67,7 +67,7 @@ namespace MyBlend
 
             var lights = new List<Light>()
             {
-                new Light(eye, new RgbColor(255,0,255)),
+                new Light(Vector3.Transform(eye, GetViewerSpace()), new RgbColor(255,255,255)),
                 //new Light(new Vector3(0, 10, 10), 255)
             };
 
@@ -76,7 +76,7 @@ namespace MyBlend
             renderMethod = renderer.DrawEntityMesh;
 
             UpdateWorldModel(Matrix4x4.Identity);
-            renderer.RasterizeEntityWithTexture(WorldModel, entity);
+            renderMethod.Invoke(WorldModel, entity);
 
             KeyDown += RerenderScreen;
             MouseMove += RerenderScreen;
@@ -97,11 +97,11 @@ namespace MyBlend
                     renderMethod = renderer.DrawEntityMesh;
                     break;
                 case Key.D2:
-                    renderer.UpdateShader(null);
+                    renderer.UpdateShader(new FlatShading());
                     renderMethod = renderer.RasterizeEntity;
                     break;
                 case Key.D3:
-                    renderer.UpdateShader(new FlatShading());
+                    renderer.UpdateShader(new PhongShading(screen), true);
                     renderMethod = renderer.RasterizeEntity;
                     break;
                 case Key.D4:

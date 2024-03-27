@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -50,6 +51,7 @@ namespace MyBlend.Graphics
         public IEnumerable<Light>? Lights;
 
         private bool withTexture = false;
+        private bool isColorByNormal = false;
         private Entity currentEntity;
         public Renderer(Screen screen, Shading shader)
             : this(screen)
@@ -107,7 +109,8 @@ namespace MyBlend.Graphics
                             ScreenPosition = new Vector2(Clamp(pos.X, 0, width - 1), Clamp(pos.Y, 0, height - 1)),
                             WorldPosition = new Vector3(pos.X, pos.Y, pos.Z),
                             Normal = normals[poligon[i].nIndex],
-                            TexturePosition = textures[poligon[i].tIndex]
+                            TexturePosition = textures[poligon[i].tIndex],
+                            W = pos.W
                         };
                     }
 
@@ -214,9 +217,9 @@ namespace MyBlend.Graphics
         }
 
         private bool IsPoligonBehindCamera(Face[] poligon, IList<Vector4> positions) => poligon.Any(point => positions[point.vIndex] == Vector4.Zero);
+        bool IsCutted(params Vertex[] vertices) => vertices.Any(v => Vector3.Dot(screen.Camera!.Eye, v.Normal) < 0);
 
         private int GetCoordinateInRange(float value, float min, float max) => (int)Clamp(value, min, max);
-
         private void DrawLine(WriteableBitmapInfo bmp, int x1, int y1, int x2, int y2)
         {
             double dx = x2 - x1;
@@ -284,7 +287,11 @@ namespace MyBlend.Graphics
 
         private record struct WriteableBitmapInfo(nint BackBuffer, int BackBufferStride, int FormatBitsPerPixel);
 
-        public void UpdateShader(Shading? shader) => this.shader = shader;
+        public void UpdateShader(Shading? shader, bool isColorByNormal = false)
+        {
+            this.shader = shader;
+            this.isColorByNormal = isColorByNormal;
+        }
         float Clamp(float value, float min = 0, float max = 1) => Math.Max(min, Math.Min(value, max));
         float Interpolate(float min, float max, float gradient) => min + (max - min) * Clamp(gradient);
         float Cross2D(float x0, float y0, float x1, float y1) => x0 * y1 - x1 * y0;
@@ -301,6 +308,18 @@ namespace MyBlend.Graphics
                     return shader.GetColorIntensity(light, va, vb, vc, p);
                 else
                     return shader.GetColorIntensity(light, va, vb, vd, p);
+            }
+
+            int GetColorByNormal(Light light, Vector3 p)
+            {
+                Vector3 n;
+                if (vc.WorldPosition != va.WorldPosition && vc.WorldPosition != vb.WorldPosition)
+                    n = shader!.GetNormalOfPoint(va, vb, vc, p);
+                else
+                    n = shader!.GetNormalOfPoint(va, vb, vd, p);
+                var clr = new RgbColor((byte)(255 * Math.Abs(n.X)), (byte)(255 * Math.Abs(n.Y)), (byte)(255 * Math.Abs(n.Z)));
+                var intensity = GetColorIntensity(light.Position, p);
+                return new RgbColor((byte)(clr.R * intensity), (byte)(clr.G * intensity), (byte)(clr.B * intensity)).Color;
             }
 
             int GetColor(Vector3 p, float u = 0, float v = 0)
@@ -326,6 +345,9 @@ namespace MyBlend.Graphics
                             }
                         }
 
+                        if (isColorByNormal == true)
+                            return GetColorByNormal(light, p);
+
                         var intensity = GetColorIntensity(light.Position, p);
                         clr.UpdateColor(lclr.ByIntensity(intensity));
                     }
@@ -349,12 +371,15 @@ namespace MyBlend.Graphics
             float sz = Interpolate(va.WorldPosition.Z, vb.WorldPosition.Z, gradient1);
             float ez = Interpolate(vc.WorldPosition.Z, vd.WorldPosition.Z, gradient2);
 
+            float sw = Interpolate(va.W, vb.W, gradient1);
+            float ew = Interpolate(vc.W, vd.W, gradient2);
+
             if (withTexture)
             {
-                var su = Interpolate(va.TexturePosition!.Value.X, vb.TexturePosition!.Value.X, gradient1);
-                var eu = Interpolate(vc.TexturePosition!.Value.X, vd.TexturePosition!.Value.X, gradient2);
-                var sv = Interpolate(va.TexturePosition!.Value.Y, vb.TexturePosition!.Value.Y, gradient1);
-                var ev = Interpolate(vc.TexturePosition!.Value.Y, vd.TexturePosition!.Value.Y, gradient2);
+                var su = Interpolate(va.TexturePosition!.Value.X / va.W, vb.TexturePosition!.Value.X / vb.W, gradient1);
+                var eu = Interpolate(vc.TexturePosition!.Value.X / vc.W, vd.TexturePosition!.Value.X / vd.W, gradient2);
+                var sv = Interpolate(va.TexturePosition!.Value.Y / va.W, vb.TexturePosition!.Value.Y / vb.W, gradient1);
+                var ev = Interpolate(vc.TexturePosition!.Value.Y / vc.W, vd.TexturePosition!.Value.Y / vd.W, gradient2);
 
                 for (var x = sx; x < ex; x++)
                 {
@@ -362,9 +387,10 @@ namespace MyBlend.Graphics
                     var z = Interpolate(sz, ez, gradientZ);
                     var u = Interpolate(su, eu, gradientZ);
                     var v = Interpolate(sv, ev, gradientZ);
+                    var reverseW = Interpolate(1 / sw, 1 / ew, gradientZ);
 
 
-                    var clr = GetColor(new Vector3(x, y, z), u, v);
+                    var clr = GetColor(new Vector3(x, y, z), u / reverseW, v / reverseW);
                     zBuffer.TryToUpdateZ(x, y, z, () => DrawPixel(x, y, clr));
                 }
             }
@@ -381,8 +407,12 @@ namespace MyBlend.Graphics
             }
         }
 
+
         void DrawTriangle(Vertex v1, Vertex v2, Vertex v3)
         {
+            if (IsCutted(v1, v2, v3))
+                return;
+
             if (v1.ScreenPosition.Y > v2.ScreenPosition.Y) (v1, v2) = (v2, v1);
             if (v2.ScreenPosition.Y > v3.ScreenPosition.Y) (v2, v3) = (v3, v2);
             if (v1.ScreenPosition.Y > v2.ScreenPosition.Y) (v1, v2) = (v2, v1);

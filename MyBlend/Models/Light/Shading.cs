@@ -12,5 +12,6 @@ namespace MyBlend.Models.Light
     {
         protected float CalculateNormalDotLight(Vector3 normal, Vector3 light) => Math.Max(0, Vector3.Dot(Vector3.Normalize(normal), Vector3.Normalize(light)));
         public abstract float GetColorIntensity(Vector3 light, Vertex va, Vertex vb, Vertex vc, Vector3 p);
+        public abstract Vector3 GetNormalOfPoint(Vertex va, Vertex vb, Vertex vc, Vector3 cur);
     }
 }

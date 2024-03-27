@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.ConstrainedExecution;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -49,6 +50,8 @@ namespace MyBlend.Models.Light
             var R = Vector3.Normalize(dir - 2 * Vector3.Dot(dir, normal) * normal);
             var rv = Vector3.Dot(Vector3.Normalize(screen.Camera!.Eye), R);
             var clr = (int)(ks * Math.Pow(rv, alpha) * iS);
+            //if (clr > 90 && Math.Abs(normal.Z) < 0.0001f)
+            //    return Math.Max(0,clr);
             return Math.Max(0, clr);
         }
 
@@ -59,24 +62,11 @@ namespace MyBlend.Models.Light
             return AddAmbientColor() + AddDiffuseColor(light, normal, cur) + AddSpecularColor(light, normal, cur);
         }
 
-        //void CalculateBarycentricCoordinates(Vector3 A, Vector3 B, Vector3 C, Vector3 P, out float v1, out float v2, out float v3)
-        //{
-        //    Vector3 v0 = B - A;
-        //    Vector3 v1 = C - A;
-        //    Vector3 v2 = P - A;
-
-        //    float d00 = Vector3.Dot(v0, v0);
-        //    float d01 = Vector3.Dot(v0, v1);
-        //    float d11 = Vector3.Dot(v1, v1);
-        //    float d20 = Vector3.Dot(v2, v0);
-        //    float d21 = Vector3.Dot(v2, v1);
-
-        //    float denom = d00 * d11 - d01 * d01;
-
-        //    v2 = (d11 * d20 - d01 * d21) / denom;
-        //    v3 = (d00 * d21 - d01 * d20) / denom;
-        //    v1 = 1 - v2 - v3;
-        //}
+        public override Vector3 GetNormalOfPoint(Vertex va, Vertex vb, Vertex vc, Vector3 cur)
+        {
+            FindBarycentricCoordinates(va.WorldPosition, vb.WorldPosition, vc.WorldPosition, cur, out var u, out var v, out var w);
+            return u * va.Normal + v * vb.Normal + w * vc.Normal;
+        }
 
         void FindBarycentricCoordinates(Vector3 A, Vector3 B, Vector3 C, Vector3 P, out float u, out float v, out float w)
         {

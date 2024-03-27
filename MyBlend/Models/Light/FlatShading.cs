@@ -19,6 +19,11 @@ namespace MyBlend.Models.Light
             return CountLightIntension(light, va, vb, vc, p);
         }
 
+        public override Vector3 GetNormalOfPoint(Vertex va, Vertex vb, Vertex vc, Vector3 cur)
+        {
+            return Vector3.Normalize((va.Normal + vb.Normal + vc.Normal) / 3);
+        }
+
         float CountLightIntension(Vector3 light, Vertex v1, Vertex v2, Vertex v3, Vector3 p)
         {
             var l1 = CalculateNormalDotLight(v1.Normal, light);
