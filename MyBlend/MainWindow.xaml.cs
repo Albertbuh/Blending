@@ -19,6 +19,7 @@ using static System.Formats.Asn1.AsnWriter;
 using System.Diagnostics;
 using System.Windows.Threading;
 using MyBlend.Models.Light;
+using Microsoft.Win32;
 
 namespace MyBlend
 {
@@ -49,7 +50,8 @@ namespace MyBlend
             parser = new ObjParser((ObjEntity)entity);
             //parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
             //parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\cube.obj");
-            parser.Parse(@"D:\Univer\acg\Shovel Knight\shovel_low.obj");
+            //parser.Parse(@"D:\Univer\acg\Shovel Knight\shovel_low.obj");
+            parser.Parse(@"D:\Univer\acg\box\Box.obj");
             //parser.Parse(@"D:\Univer\acg\DoomCombatScene.obj");
 
 
@@ -114,6 +116,21 @@ namespace MyBlend
                     var list = renderer.Lights.ToList();
                     list.Add(new Light(camera.Eye, 255));
                     renderer.Lights = list;
+                    break;
+                case Key.O:
+                    if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+                    {
+                        var openFileDialog = new OpenFileDialog();
+                        openFileDialog.DefaultDirectory = @"D:\Univer\acg";
+                        openFileDialog.Filter = "OBJ Files (*.obj)|*.obj";
+                        var result = openFileDialog.ShowDialog();
+                        if(result == true)
+                        {
+                            var path = openFileDialog.FileName;
+                            parser.Parse(path);
+                            renderMethod.Invoke(WorldModel, entity);
+                        }
+                    }
                     break;
 
             }
@@ -185,6 +202,10 @@ namespace MyBlend
                          camera.GetPerspectiveMatrix() *
                          screen.GetMatrix();
         }
+
+        public Matrix4x4 GetViewerSpace() =>
+             Matrix4x4.CreateScale(new Vector3(scale, scale, scale)) *
+                         camera.GetLookAtMatrix();
 
         
     }
