@@ -36,7 +36,11 @@ namespace MyBlend.Parser
                         AnalizeLine(line);
                     }
                 }
-                ReadMtlFile(filepath);
+                try
+                {
+                    ReadMtlFile(filepath);
+                }
+                catch { }
             }
             catch(Exception e)
             {

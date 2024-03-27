@@ -73,7 +73,7 @@ namespace MyBlend
 
             renderer = new Renderer(screen, lights);
             renderer.UpdateShader(new PhongShading(screen));
-            renderMethod = renderer.RasterizeEntityWithTexture;
+            renderMethod = renderer.DrawEntityMesh;
 
             UpdateWorldModel(Matrix4x4.Identity);
             renderer.RasterizeEntityWithTexture(WorldModel, entity);
