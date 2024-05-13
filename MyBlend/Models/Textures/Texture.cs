@@ -18,6 +18,8 @@ namespace MyBlend.Models.Textures
         private int width;
         private int height;
 
+        public int Width => width - 1;
+        public int Height => height - 1;
         public Texture(string filename)
         {
             LoadBuffer(filename);
@@ -47,6 +49,13 @@ namespace MyBlend.Models.Textures
             int u = Math.Abs((int)(tu * width) % width);
             int v = Math.Abs((int)(tv * height) % height);
 
+            return pixelBuffer[v, u];
+        }
+
+        public RgbColor GetPixel(int u, int v)
+        {
+            if (pixelBuffer == null)
+                return RgbColor.White;
             return pixelBuffer[v, u];
         }
 

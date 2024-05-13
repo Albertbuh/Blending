@@ -30,13 +30,47 @@ namespace MyBlend.Models.Basic
 
         public int ByIntensity(float k)
         {
+            k = Clamp(k, 0f, 1f);
             return (A << 24) | ((int)(R * k) << 16) | ((int)(G * k) << 8) | (int)(B * k);
         }
 
-        public void UpdateColor(int color)
+        public int ByIntensity(float ri, float gi, float bi)
+        {
+            ri = Clamp(ri, 0f, 1f);
+            gi = Clamp(gi, 0f, 1f);
+            bi = Clamp(bi, 0f, 1f);
+            return (A << 24) | ((int)(R * ri) << 16) | ((int)(G * gi) << 8) | (int)(B * bi);
+        }
+
+        public RgbColor GetColorByIntensity(float k)
+            => new RgbColor((byte)(R * k), (byte)(G * k), (byte)(B * k), A);
+
+        public RgbColor UpdateColor(int color)
         {
             this.color |= color;
+            return this;
         }
+
+        public static RgbColor CrossColors(RgbColor c1, RgbColor c2)
+        {
+            return new RgbColor(Clamp(c1.R + c2.R), Clamp(c1.G + c2.G), Clamp(c1.B + c2.B), Clamp(c1.A + c2.A));
+        }
+
+        private static float Lerp(float a, float b, float t)
+            => a + (b - a) * t;
+
+
+        public static RgbColor Interpolate(RgbColor c1, RgbColor c2, float s)
+        {
+            s = Clamp(s, 0, 1);
+            return new RgbColor((byte)Lerp(c1.R, c2.R, s), (byte)Lerp(c1.G, c2.G, s), (byte)Lerp(c1.B, c1.B, s));
+        }
+
+
+        private static byte Clamp(int value, float min = 0, float max = 255)
+            => (byte)Math.Max(min, Math.Min(value, max));
+        private static float Clamp(float value, float min, float max)
+            => Math.Max(min, Math.Min(value, max));
 
     }
 }

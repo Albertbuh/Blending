@@ -50,25 +50,23 @@ namespace MyBlend.Models.Light
             var R = Vector3.Normalize(dir - 2 * Vector3.Dot(dir, normal) * normal);
             var rv = Vector3.Dot(Vector3.Normalize(screen.Camera!.Eye), R);
             var clr = (int)(ks * Math.Pow(rv, alpha) * iS);
-            //if (clr > 90 && Math.Abs(normal.Z) < 0.0001f)
-            //    return Math.Max(0,clr);
             return Math.Max(0, clr);
         }
 
         int GetColorByPhong(Vector3 light, Vertex va, Vertex vb, Vertex vc, Vector3 cur)
         {
-            FindBarycentricCoordinates(va.WorldPosition, vb.WorldPosition, vc.WorldPosition, cur, out var u, out var v, out var w);
+            FindBarycentricCoordinates(va.GlobalPosition, vb.GlobalPosition, vc.GlobalPosition, cur, out var u, out var v, out var w);
             var normal = u * va.Normal + v * vb.Normal + w * vc.Normal;
             return AddAmbientColor() + AddDiffuseColor(light, normal, cur) + AddSpecularColor(light, normal, cur);
         }
 
         public override Vector3 GetNormalOfPoint(Vertex va, Vertex vb, Vertex vc, Vector3 cur)
         {
-            FindBarycentricCoordinates(va.WorldPosition, vb.WorldPosition, vc.WorldPosition, cur, out var u, out var v, out var w);
+            FindBarycentricCoordinates(va.GlobalPosition, vb.GlobalPosition, vc.GlobalPosition, cur, out var u, out var v, out var w);
             return u * va.Normal + v * vb.Normal + w * vc.Normal;
         }
 
-        void FindBarycentricCoordinates(Vector3 A, Vector3 B, Vector3 C, Vector3 P, out float u, out float v, out float w)
+        void FindBarycentricCoordinates(Vector4 A, Vector4 B, Vector4 C, Vector3 P, out float u, out float v, out float w)
         {
             float S = (A.X * (B.Y - C.Y) + B.X * (C.Y - A.Y) + C.X * (A.Y - B.Y)) / 2.0f;
             u = ((B.Y - C.Y) * (P.X - C.X) + (C.X - B.X) * (P.Y - C.Y)) / (2.0f * S);

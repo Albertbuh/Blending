@@ -49,9 +49,8 @@ namespace MyBlend
             entity = new ObjEntity();
             parser = new ObjParser((ObjEntity)entity);
             //parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
-            //parser.Parse(@"C:\Users\alber\Downloads\Telegram Desktop\cube.obj");
-            //parser.Parse(@"D:\Univer\acg\Shovel Knight\shovel_low.obj");
-            parser.Parse(@"D:\Univer\acg\box\Box.obj");
+            parser.Parse(@"D:\Univer\acg\Shovel Knight\shovel_low.obj");
+            //parser.Parse(@"D:\Univer\acg\box\Box.obj");
             //parser.Parse(@"D:\Univer\acg\DoomCombatScene.obj");
 
 
@@ -67,13 +66,17 @@ namespace MyBlend
 
             var lights = new List<Light>()
             {
-                new Light(Vector3.Transform(eye, GetViewerSpace()), new RgbColor(255,255,255)),
+                new Light(new Vector3(5, 10, 20), new RgbColor(255,0,255)),
+                //new Light(new Vector3(0, 1000, 50), new RgbColor(255,0,255)),
+                //new Light(new Vector3(0,0, 100), new RgbColor(122,122,122)),
+                //new Light(new Vector3(0, -1000, -1000), new RgbColor(255,255,0)),
+                //new Light(new Vector3(1000, 1000, 1000), new RgbColor(255,255,255)),
                 //new Light(new Vector3(0, 10, 10), 255)
             };
 
             renderer = new Renderer(screen, lights);
             renderer.UpdateShader(new PhongShading(screen));
-            renderMethod = renderer.DrawEntityMesh;
+            renderMethod = renderer.RasterizeEntity;
 
             UpdateWorldModel(Matrix4x4.Identity);
             renderMethod.Invoke(WorldModel, entity);
@@ -81,12 +84,6 @@ namespace MyBlend
             KeyDown += RerenderScreen;
             MouseMove += RerenderScreen;
             MouseWheel += RerenderScreen;
-
-            timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromSeconds(1);
-            timer.Tick += Timer_Tick;
-
-            timer.Start();
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -94,28 +91,35 @@ namespace MyBlend
             switch(e.Key)
             {
                 case Key.D1:
-                    renderMethod = renderer.DrawEntityMesh;
+                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Mesh;
                     break;
                 case Key.D2:
-                    renderer.UpdateShader(new FlatShading());
-                    renderMethod = renderer.RasterizeEntity;
+                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Old;
                     break;
                 case Key.D3:
-                    renderer.UpdateShader(new PhongShading(screen), true);
-                    renderMethod = renderer.RasterizeEntity;
+                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.None;
+                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.BlinnPhong;
+                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
                     break;
                 case Key.D4:
-                    renderer.UpdateShader(new PhongShading(screen));
-                    renderMethod = renderer.RasterizeEntity;
+                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Basic;
+                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.Phong;
+                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
                     break;
                 case Key.D5:
-                    renderer.UpdateShader(new PhongShading(screen));
-                    renderMethod = renderer.RasterizeEntityWithTexture;
+                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Basic;
+                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.BlinnPhong;
+                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
                     break;
-                case Key.N:
-                    var list = renderer.Lights.ToList();
-                    list.Add(new Light(camera.Eye, 255));
-                    renderer.Lights = list;
+                case Key.D6:
+                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Bilinear;
+                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.BlinnPhong;
+                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
+                    break;
+                case Key.D7:
+                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Basic;
+                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.CelShading;
+                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
                     break;
                 case Key.O:
                     if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))

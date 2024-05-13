@@ -33,7 +33,7 @@ namespace MyBlend.Graphics
         {
             lock (lockers[y, x])
             {
-                if (GetZ(x, y) >= z)
+                if (GetZ(x, y) > z)
                 {
                     buffer[y, x] = z;
                     action?.Invoke();
@@ -45,8 +45,8 @@ namespace MyBlend.Graphics
         {
             if (!IsInBuffer(x, y))
                 return;
-            buffer[y, x] = value;
-            //Interlocked.Exchange(ref buffer[y, x], value);
+            //buffer[y, x] = value;
+            Interlocked.Exchange(ref buffer[y, x], value);
         } 
 
         private bool IsInBuffer(int x, int y)
