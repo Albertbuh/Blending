@@ -1,0 +1,4 @@
+newmtl base
+map_Kd shovel_diffuse.png
+norm shovel_normal_map.png
+map_MRAO shovel_mrao.png

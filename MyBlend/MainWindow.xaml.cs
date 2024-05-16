@@ -7,7 +7,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Numerics;
 using System.Reflection.Emit;
 using System.Data.Common;
@@ -20,6 +19,7 @@ using System.Diagnostics;
 using System.Windows.Threading;
 using MyBlend.Models.Light;
 using Microsoft.Win32;
+using System.IO;
 
 namespace MyBlend
 {
@@ -48,20 +48,16 @@ namespace MyBlend
 
             entity = new ObjEntity();
             parser = new ObjParser((ObjEntity)entity);
-            //parser.Parse(@"D:\Univer\acg\russian-archipelago-frigate-svjatoi-nikolai\source\SM_Ship01A_02_OBJ.obj");
-            parser.Parse(@"D:\Univer\acg\Shovel Knight\shovel_low.obj");
-            //parser.Parse(@"D:\Univer\acg\box\Box.obj");
-            //parser.Parse(@"D:\Univer\acg\DoomCombatScene.obj");
 
 
             width = (float)Application.Current.MainWindow.Width;
             height = (float)Application.Current.MainWindow.Height;
 
             var eye = new Vector3(0, 20, 35);
-            var target = new Vector3(0,0,0);
+            var target = new Vector3(0, 0, 0);
             var up = new Vector3(0, 1, 0);
             screen = new Screen(img, width, height);
-            camera = new Camera(DegToRad(60), width/height, 0.1f, 10f, eye, target, up);
+            camera = new Camera(DegToRad(60), width / height, 0.1f, 10f, eye, target, up);
             screen.Camera = camera;
 
             var lights = new List<Light>()
@@ -88,7 +84,7 @@ namespace MyBlend
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
-            switch(e.Key)
+            switch (e.Key)
             {
                 case Key.D1:
                     renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Mesh;
@@ -124,22 +120,28 @@ namespace MyBlend
                 case Key.O:
                     if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
                     {
+                        var previousContent = placeholder.Content;
+                        placeholder.Content = "Loading...";
                         var openFileDialog = new OpenFileDialog();
                         openFileDialog.DefaultDirectory = @"D:\Univer\acg";
                         openFileDialog.Filter = "OBJ Files (*.obj)|*.obj";
                         var result = openFileDialog.ShowDialog();
-                        if(result == true)
+                        if (result == true)
                         {
                             var path = openFileDialog.FileName;
                             parser.Parse(path);
+                            placeholder.Visibility = Visibility.Hidden;
                             renderMethod.Invoke(WorldModel, entity);
+                        }
+                        else {
+                            placeholder.Content = previousContent;
                         }
                     }
                     break;
 
             }
         }
-        
+
         private float DegToRad(float angle)
         {
             return (float)(Math.PI / 180 * angle);
@@ -175,7 +177,7 @@ namespace MyBlend
                     MoveCamera(0, dy * 0.2f);
                 }
             }
-            else if(e.RightButton == MouseButtonState.Pressed)
+            else if (e.RightButton == MouseButtonState.Pressed)
             {
                 if (prevMousePosition != default)
                 {
@@ -211,6 +213,6 @@ namespace MyBlend
              Matrix4x4.CreateScale(new Vector3(scale, scale, scale)) *
                          camera.GetLookAtMatrix();
 
-        
+
     }
 }
