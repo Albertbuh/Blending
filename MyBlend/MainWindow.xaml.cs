@@ -123,7 +123,6 @@ namespace MyBlend
                         var previousContent = placeholder.Content;
                         placeholder.Content = "Loading...";
                         var openFileDialog = new OpenFileDialog();
-                        openFileDialog.DefaultDirectory = @"D:\Univer\acg";
                         openFileDialog.Filter = "OBJ Files (*.obj)|*.obj";
                         var result = openFileDialog.ShowDialog();
                         if (result == true)
