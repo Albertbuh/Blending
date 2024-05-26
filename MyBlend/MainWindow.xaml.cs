@@ -82,62 +82,111 @@ namespace MyBlend
             MouseWheel += RerenderScreen;
         }
 
+        private Key pressedBefore = Key.LineFeed;
+        private Dictionary<Key, Action<Renderer>> lightClickHandlers = new()
+        {
+            [Key.D0] = (renderer) => renderer.LightStyle = Graphics.RendererEnums.LightStyle.None,
+            [Key.D2] = (renderer) => renderer.LightStyle = Graphics.RendererEnums.LightStyle.Phong,
+            [Key.D3] = (renderer) => renderer.LightStyle = Graphics.RendererEnums.LightStyle.BlinnPhong,
+            [Key.D4] = (renderer) => renderer.LightStyle = Graphics.RendererEnums.LightStyle.CelShading,
+        };
+        private Dictionary<Key, Action<Renderer>> textureClickHandlers = new()
+        {
+            [Key.D0] = (renderer) => renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.None,
+            [Key.D1] = (renderer) => renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Basic,
+            [Key.D2] = (renderer) => renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Bilinear,
+            [Key.N] = (renderer) => renderer.WithNormal = !renderer.WithNormal,
+        };
+
+        private void ProcessCompoundKeypress(Key previous, Key key)
+        {
+            switch(previous)
+            {
+                case Key.L:
+                    lightClickHandlers.TryGetValue(key, out var lightAction);
+                    lightAction?.Invoke(renderer);
+                    break;
+                case Key.T:
+                    textureClickHandlers.TryGetValue(key, out var textureAction);
+                    textureAction?.Invoke(renderer);
+                    break;
+            }
+        }
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             switch (e.Key)
             {
-                case Key.D1:
+                case Key.M:
                     renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Mesh;
-                    break;
-                case Key.D2:
-                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Old;
-                    break;
-                case Key.D3:
-                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.None;
-                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.BlinnPhong;
-                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
-                    break;
-                case Key.D4:
-                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Basic;
-                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.Phong;
-                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
-                    break;
-                case Key.D5:
-                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Basic;
-                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.BlinnPhong;
-                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
-                    break;
-                case Key.D6:
-                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Bilinear;
-                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.BlinnPhong;
-                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
-                    break;
-                case Key.D7:
-                    renderer.TextureStyle = Graphics.RendererEnums.TextureStyle.Basic;
-                    renderer.LightStyle = Graphics.RendererEnums.LightStyle.CelShading;
-                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
                     break;
                 case Key.O:
                     if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-                    {
-                        var previousContent = placeholder.Content;
-                        placeholder.Content = "Loading...";
-                        var openFileDialog = new OpenFileDialog();
-                        openFileDialog.Filter = "OBJ Files (*.obj)|*.obj";
-                        var result = openFileDialog.ShowDialog();
-                        if (result == true)
-                        {
-                            var path = openFileDialog.FileName;
-                            parser.Parse(path);
-                            placeholder.Visibility = Visibility.Hidden;
-                            renderMethod.Invoke(WorldModel, entity);
-                        }
-                        else {
-                            placeholder.Content = previousContent;
-                        }
-                    }
+                        OpenFile();
+                    else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                        renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Old;
+                    else
+                        renderer.WithOutline = !renderer.WithOutline;
                     break;
+                case Key.Escape:
+                case Key.T:
+                case Key.L:
+                    renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
+                    pressedBefore = e.Key;
+                    UpdateHintText(pressedBefore);
+                    break;
+                default:
+                    //renderer.RenderStyle = Graphics.RendererEnums.RenderStyle.Basic;
+                    ProcessCompoundKeypress(pressedBefore, e.Key);
+                    //pressedBefore = e.Key;
+                    break;
+            }
+        }
 
+        private void UpdateHintText(Key key)
+        {
+            switch(key)
+            {
+                case Key.L:
+                    var lightModeText = new StringBuilder();
+                    lightModeText.AppendLine("Light modes:");
+                    lightModeText.AppendLine("0 - none");
+                    lightModeText.AppendLine("2 - phong");
+                    lightModeText.AppendLine("3 - blinn-phong");
+                    lightModeText.AppendLine("4 - cel");
+                    tbHint.Text = lightModeText.ToString();
+                    break;
+                case Key.T:
+                    var textureModeText = new StringBuilder();
+                    textureModeText.AppendLine("Texture modes:");
+                    textureModeText.AppendLine("0 - none");
+                    textureModeText.AppendLine("1 - basic");
+                    textureModeText.AppendLine("2 - blinear filter");
+                    textureModeText.AppendLine("n - toggle normal map");
+                    tbHint.Text = textureModeText.ToString();
+                    break;
+                default:
+                    tbHint.Text = "";
+                    break;
+            }
+        }
+
+        private void OpenFile()
+        {
+            var previousContent = placeholder.Content;
+            placeholder.Content = "Loading...";
+            var openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "OBJ Files (*.obj)|*.obj";
+            var result = openFileDialog.ShowDialog();
+            if (result == true)
+            {
+                var path = openFileDialog.FileName;
+                parser.Parse(path);
+                placeholder.Visibility = Visibility.Hidden;
+                renderMethod.Invoke(WorldModel, entity);
+            }
+            else
+            {
+                placeholder.Content = previousContent;
             }
         }
 

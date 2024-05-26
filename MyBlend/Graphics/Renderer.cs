@@ -56,8 +56,10 @@ namespace MyBlend.Graphics
         public IEnumerable<Light>? Lights;
 
         public TextureStyle TextureStyle = TextureStyle.None;
+        public bool WithNormal = false;
         public LightStyle LightStyle = LightStyle.BlinnPhong;
         public RenderStyle RenderStyle = RenderStyle.Mesh;
+        public bool WithOutline = false;
         private bool isColorByNormal = false;
         private Entity currentEntity;
 
@@ -194,7 +196,8 @@ namespace MyBlend.Graphics
                                 var resultColor = RgbColor.White;
 
                                 var textureColor = RgbColor.Black;
-                                if (this.TextureStyle != TextureStyle.None)
+                                if (this.TextureStyle != TextureStyle.None 
+                                    || WithNormal)
                                     textureColor = GetTextureColor((ObjEntity)entity, v0, v1, v2, u, v, w, ref normal);
 
                                 var lightColor = RgbColor.Black;
@@ -222,7 +225,7 @@ namespace MyBlend.Graphics
                 }
             }
 
-            if (this.LightStyle == LightStyle.CelShading)
+            if (WithOutline)
             {
                 DrawCelOutline(worldModel, poligons, globalPositions, normals);
             }
@@ -541,7 +544,7 @@ namespace MyBlend.Graphics
             var textureV = numeratorV / inverseW;
 
             //Update texel normal
-            if (objEntity.Textures.ContainsKey("norm"))
+            if (WithNormal && objEntity.Textures.ContainsKey("norm"))
             {
                 var nclr = objEntity.Textures["norm"].Map(textureU, 1 - textureV);
                 var textureNormal = new Vector3(
@@ -553,7 +556,7 @@ namespace MyBlend.Graphics
             }
 
             var textureColor = RgbColor.Black;
-            if (objEntity.Textures.ContainsKey("map_Kd"))
+            if (this.TextureStyle != TextureStyle.None && objEntity.Textures.ContainsKey("map_Kd"))
             {
                 var texture = objEntity.Textures["map_Kd"];
 

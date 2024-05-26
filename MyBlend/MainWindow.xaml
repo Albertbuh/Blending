@@ -5,15 +5,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MyBlend"
         mc:Ignorable="d"
-        Title="MainWindow" Height="600" Width="800" KeyDown="Window_KeyDown" MouseWheel="Window_MouseWheel" MouseMove="Window_MouseMove">
+        Title="MainWindow" Height="600" Width="800" KeyDown="Window_KeyDown" MouseWheel="Window_MouseWheel" MouseMove="Window_MouseMove"
+        FontFamily="Arial Black" FontWeight="Bold">
     <Grid>
         <Image x:Name="img" Grid.ColumnSpan="2"/>
         <TextBlock TextWrapping="Wrap" Margin="0,0,661,10" Height="55" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="98">
             <Run x:Name="fps" FontSize="24" Foreground="White"></Run>
         </TextBlock>
         <Label x:Name="placeholder" Content="Press Ctrl-O to choose model." 
-               Margin="72,0,72,0" VerticalAlignment="Center" Height="123" FontFamily="Arial Black" FontSize="24" FontWeight="Bold" Foreground="White"
-               HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+               Margin="72,0,72,0" VerticalAlignment="Center" Height="123"  Foreground="White"
+               HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="24" >
             <Label.Triggers>
                 <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                     <BeginStoryboard>
@@ -28,5 +29,6 @@
                 </EventTrigger>
             </Label.Triggers>
         </Label>
+        <TextBlock x:Name="tbHint" HorizontalAlignment="Left" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Height="100" Width="139" Foreground="white" Background="Transparent" Margin="20,0,0,0" FontSize="12px"/>
     </Grid>
 </Window>
