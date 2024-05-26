@@ -69,6 +69,7 @@ namespace MyBlend.Graphics
             [LightStyle.Phong] = LightSystem.CalcPhongLightIntensity,
             [LightStyle.BlinnPhong] = LightSystem.CalcBlinnPhongLightIntensity,
             [LightStyle.CelShading] = LightSystem.CalcCelShading,
+            [LightStyle.Flat] = LightSystem.CalcFlatShading,
         };
         delegate void RenderMethodsHandler(Matrix4x4 worldModel, Entity entity);
         private Dictionary<RenderStyle, RenderMethodsHandler> renderMethods = new Dictionary<RenderStyle, RenderMethodsHandler>();
@@ -196,7 +197,7 @@ namespace MyBlend.Graphics
                                 var resultColor = RgbColor.White;
 
                                 var textureColor = RgbColor.Black;
-                                if (this.TextureStyle != TextureStyle.None 
+                                if (this.TextureStyle != TextureStyle.None
                                     || WithNormal)
                                     textureColor = GetTextureColor((ObjEntity)entity, v0, v1, v2, u, v, w, ref normal);
 
@@ -471,19 +472,28 @@ namespace MyBlend.Graphics
 
         Vector3 GetLightIntensity(Vertex v0, Vertex v1, Vertex v2, float u, float v, float w, ref Vector3 position, ref Vector3 normal)
         {
-            var globalX =
-                 v0.GlobalPosition.X * u
-                 + v1.GlobalPosition.X * v
-                 + v2.GlobalPosition.X * w;
-            var globalY =
-                v0.GlobalPosition.Y * u
-                + v1.GlobalPosition.Y * v
-                + v2.GlobalPosition.Y * w;
-            var globalZ =
-                v0.GlobalPosition.Z * u
-                + v1.GlobalPosition.Z * v
-                + v2.GlobalPosition.Z * w;
-            position = new Vector3(globalX, globalY, globalZ);
+            if (this.LightStyle == LightStyle.Flat)
+            {
+                var newPosition = (v0.GlobalPosition + v1.GlobalPosition + v2.GlobalPosition) / 3;
+                position = new Vector3(newPosition.X, newPosition.Y, newPosition.Z);
+                normal = (v0.Normal + v1.Normal + v2.Normal) / 3;
+            }
+            else
+            {
+                var globalX =
+                     v0.GlobalPosition.X * u
+                     + v1.GlobalPosition.X * v
+                     + v2.GlobalPosition.X * w;
+                var globalY =
+                    v0.GlobalPosition.Y * u
+                    + v1.GlobalPosition.Y * v
+                    + v2.GlobalPosition.Y * w;
+                var globalZ =
+                    v0.GlobalPosition.Z * u
+                    + v1.GlobalPosition.Z * v
+                    + v2.GlobalPosition.Z * w;
+                position = new Vector3(globalX, globalY, globalZ);
+            }
 
             if (normal == Vector3.Zero)
             {
@@ -503,7 +513,6 @@ namespace MyBlend.Graphics
             }
             normal = Vector3.Normalize(normal);
 
-            var lightColor = RgbColor.Black;
             var globalIntensity = Vector3.Zero;
             foreach (var light in Lights!)
             {
@@ -513,7 +522,6 @@ namespace MyBlend.Graphics
                     position,
                     normal
                 );
-                lightColor = RgbColor.CrossColors(lightColor, light.Color.GetColorByIntensity(intensity));
                 globalIntensity.X += intensity * (light.Color.R);
                 globalIntensity.Y += intensity * (light.Color.G);
                 globalIntensity.Z += intensity * (light.Color.B);

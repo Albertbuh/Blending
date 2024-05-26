@@ -86,6 +86,7 @@ namespace MyBlend
         private Dictionary<Key, Action<Renderer>> lightClickHandlers = new()
         {
             [Key.D0] = (renderer) => renderer.LightStyle = Graphics.RendererEnums.LightStyle.None,
+            [Key.D1] = (renderer) => renderer.LightStyle = Graphics.RendererEnums.LightStyle.Flat,
             [Key.D2] = (renderer) => renderer.LightStyle = Graphics.RendererEnums.LightStyle.Phong,
             [Key.D3] = (renderer) => renderer.LightStyle = Graphics.RendererEnums.LightStyle.BlinnPhong,
             [Key.D4] = (renderer) => renderer.LightStyle = Graphics.RendererEnums.LightStyle.CelShading,
@@ -150,6 +151,7 @@ namespace MyBlend
                     var lightModeText = new StringBuilder();
                     lightModeText.AppendLine("Light modes:");
                     lightModeText.AppendLine("0 - none");
+                    lightModeText.AppendLine("1 - flat");
                     lightModeText.AppendLine("2 - phong");
                     lightModeText.AppendLine("3 - blinn-phong");
                     lightModeText.AppendLine("4 - cel");

@@ -33,6 +33,11 @@ namespace MyBlend.Models.Light
             else
                 return 1;
         }
+
+        public static float CalcFlatShading(Vector3 camera, Vector3 light, Vector3 position, Vector3 normal)
+        {
+            return AddAmbientColor() + AddDiffuseColor(light, normal, position);
+        }
         
         static float AddAmbientColor()
         {
